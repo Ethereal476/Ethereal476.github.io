@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHANTOM - 核心终端</title>
+    <title>PHANTOM - CORE TERMINAL v2.0</title>
     <style>
-        /* 核心字体分离：英文使用黑客终端体 Courier New，中文使用高清平滑体 */
+        /* 核心黑客/现代混合字体：英文/数字用等宽Consolas，中文用现代无衬线 */
         * {
-            font-family: 'Courier New', Courier, Monaco, 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
+            font-family: 'Consolas', 'Courier New', 'PingFang SC', 'Microsoft YaHei', monospace, sans-serif !important;
             box-sizing: border-box;
             user-select: none;
         }
 
         :root {
             --primary: #00ff00;
+            --primary-dim: rgba(0, 255, 0, 0.15);
             --bg: #000000;
-            --panel-bg: rgba(0, 15, 0, 0.95);
+            --panel-bg: rgba(0, 8, 0, 0.96);
             --border: 1px solid #00ff00;
+            --warn: #ff0000;
         }
 
         body, html {
@@ -24,23 +26,26 @@
             background-color: var(--bg); color: var(--primary);
             overflow: hidden; 
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
+        /* 屏幕切换管理器 */
         .screen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transform: scale(0.98);
+            opacity: 0; pointer-events: none; transform: scale(0.99);
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
         .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
 
+        /* 面板样式 */
         .panel {
             background: var(--panel-bg); border: var(--border);
-            padding: 30px; box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
-            width: 85%; max-width: 950px; text-align: center; position: relative;
+            padding: 30px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.15);
+            width: 90%; max-width: 1000px; text-align: center; position: relative;
         }
 
-        h2 { text-shadow: 0 0 5px var(--primary); margin-top: 0; font-weight: normal; letter-spacing: 1px; }
+        h2 { text-shadow: 0 0 8px var(--primary); margin-top: 0; font-weight: normal; letter-spacing: 2px; }
 
         input, select, button {
             background: #000; color: var(--primary); border: var(--border);
@@ -49,171 +54,160 @@
         button { cursor: pointer; transition: all 0.2s; }
         button:hover { background: var(--primary); color: #000; box-shadow: 0 0 10px var(--primary); }
 
-        /* 左上/右上角按钮 */
+        /* 右上角/左上角通用小按钮 */
         .top-btn {
-            position: absolute; background: transparent;
+            position: absolute; top: 15px; right: 15px; background: transparent;
             color: var(--primary); border: 1px solid var(--primary); font-size: 12px; 
             cursor: pointer; padding: 5px 10px; margin: 0;
         }
         .top-btn:hover { background: var(--primary); color: #000; }
-        .top-btn.right { top: 15px; right: 15px; }
-        
-        /* 设置界面左上角小三角 */
-        .triangle-btn {
-            position: absolute; top: 10px; left: 15px; background: transparent;
-            color: var(--primary); border: none; font-size: 18px; 
-            cursor: pointer; padding: 0; margin: 0; transition: transform 0.2s;
-        }
-        .triangle-btn:hover { transform: scale(1.2); text-shadow: 0 0 8px var(--primary); }
 
         /* 游戏分类布局 */
-        .game-category { text-align: left; margin-top: 20px; border-top: 1px dashed var(--primary); padding-top: 10px; }
-        .game-category-title { font-size: 16px; margin-bottom: 10px; font-weight: bold; }
+        .game-category { text-align: left; margin-top: 15px; border-top: 1px dashed var(--primary); padding-top: 10px; }
+        .game-category-title { font-size: 15px; margin-bottom: 10px; font-weight: bold; color: #fff; }
         .game-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
         .game-card {
-            border: var(--border); padding: 15px 5px; cursor: pointer; transition: all 0.2s;
+            border: var(--border); padding: 12px 5px; cursor: pointer; transition: all 0.2s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background: rgba(0, 255, 0, 0.05); font-size: 14px; font-weight: bold; text-align: center;
+            background: rgba(0, 255, 0, 0.03); font-size: 13px; font-weight: bold; text-align: center;
         }
-        .game-card:hover { background: rgba(0, 255, 0, 0.2); transform: translateY(-2px); }
+        .game-card:hover { background: rgba(0, 255, 0, 0.15); transform: translateY(-1px); }
 
-        /* 警告弹窗 (居中覆盖) */
+        /* 统一弹窗样式 */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 3000;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 9999;
         }
-        .warning-box { border: 2px solid #ff0000; background: #1a0000; padding: 30px; color: #ff0000; text-align: center; max-width: 500px; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
-        .warning-box h3 { font-size: 20px; margin-top: 0; font-family: 'Courier New', sans-serif !important; }
-        .warning-box button { background: #ff0000; color: #fff; border: none; padding: 8px 25px; margin: 10px; font-weight: bold; }
-        .warning-box button:hover { background: #cc0000; box-shadow: 0 0 10px #ff0000; }
+        .warning-box { border: 2px solid var(--warn); background: #150000; padding: 25px; color: var(--warn); text-align: center; max-width: 450px; box-shadow: 0 0 20px rgba(255,0,0,0.4); }
+        .warning-box button { background: var(--warn); color: #fff; border: none; padding: 6px 25px; margin-top: 15px; font-weight: bold; }
+        .warning-box button:hover { background: #ff5555; box-shadow: 0 0 10px #ff0000; color: #000; }
 
         /* macOS 风格设置界面 */
         .macos-window {
-            border: var(--border); background: #000; width: 100%; height: 500px;
-            display: flex; flex-direction: column; text-align: left; position: relative;
+            border: var(--border); background: #000; width: 100%; height: 460px;
+            display: flex; flex-direction: column; text-align: left;
         }
         .macos-header {
-            background: rgba(0, 255, 0, 0.2); padding: 12px 15px; text-align: center;
-            border-bottom: var(--border); font-size: 14px; position: relative;
+            background: rgba(0, 255, 0, 0.15); padding: 10px 15px;
+            border-bottom: var(--border); font-size: 13px; position: relative;
+            display: flex; align-items: center;
         }
         .macos-body { padding: 15px; overflow-y: auto; flex: 1; }
         
-        .tree-header { cursor: pointer; font-size: 14px; padding: 6px 10px; background: rgba(0,255,0,0.1); margin-top: 10px; border: 1px solid rgba(0,255,0,0.3); font-weight: bold;}
-        .tree-header:hover { background: rgba(0,255,0,0.2); }
-        .tree-content { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; border: 1px dashed rgba(0,255,0,0.3); border-top: none; }
+        .tree-header { cursor: pointer; font-size: 14px; padding: 6px; background: rgba(0,255,0,0.08); margin-top: 8px; border: 1px solid rgba(0,255,0,0.25); }
+        .tree-header:hover { background: rgba(0,255,0,0.18); }
+        .tree-content { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px; border: 1px dashed rgba(0,255,0,0.2); border-top: none; }
         .feature-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
-        .feature-item input { width: 14px; height: 14px; accent-color: var(--primary); filter: hue-rotate(240deg); margin: 0; }
+        .feature-item input { width: 14px; height: 14px; accent-color: var(--primary); margin: 0; }
 
-        /* 终端全局布局 (底层全屏) */
-        .injection-container { width: 100%; height: 100%; position: relative; }
-        .terminal {
-            width: 100%; height: calc(100% - 25px); overflow-y: auto; padding: 20px;
-            color: var(--primary); text-align: left; line-height: 1.4; font-size: 13px;
-            padding-bottom: 100px;
+        /* 刷入全屏布局 */
+        .injection-container {
+            width: 100%; height: 100%; position: relative; background: #000;
         }
-
-        /* 底部全局进度条 */
-        .bottom-progress {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;
-            background: #000; border-top: var(--border);
-            display: flex; align-items: center; padding: 0 10px; font-size: 12px;
-            z-index: 2000;
+        /* 全屏覆盖滚动终端 */
+        .terminal-full {
+            width: 100%; height: calc(100vh - 40px); overflow-y: hidden; padding: 30px;
+            color: var(--primary); text-align: left; line-height: 1.7; font-size: 14px;
         }
-        .progress-bar-bg { flex: 1; height: 10px; background: rgba(0,255,0,0.2); margin: 0 15px; border: 1px solid var(--primary); position: relative;}
-        .progress-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.1s linear; }
-        .progress-text { width: 120px; text-align: right; }
-
-        /* 悬浮控件 (雷达与控制面板) */
-        .floating-widget {
-            position: absolute; background: rgba(0, 5, 0, 0.85); /* 半透明制造重叠感 */
-            border: var(--border); box-shadow: 0 0 15px rgba(0,255,0,0.2);
-            backdrop-filter: blur(3px); display: none; flex-direction: column; z-index: 1000;
-            transition: opacity 0.5s ease; opacity: 0;
-        }
-        .floating-widget.active { display: flex; opacity: 1; }
-        
-        .widget-top-left { top: 20px; left: 20px; }
-        .widget-top-right { top: 20px; right: 20px; width: 320px; max-height: 80vh; }
-
-        /* 雷达模块 */
-        .radar-box { padding: 20px; display: flex; justify-content: center; align-items: center; }
-        .radar-container {
-            width: 180px; height: 180px; border-radius: 50%; border: 1px solid var(--primary); 
-            background: rgba(0, 20, 0, 0.6); overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.5);
-        }
-        .radar-scan {
-            position: absolute; top: 50%; left: 50%; width: 180px; height: 180px;
-            background: conic-gradient(from 0deg, transparent 70%, rgba(0, 255, 0, 0.8) 100%);
-            transform-origin: 0 0; animation: radar-spin 2s linear infinite;
-        }
-        .radar-grid { position: absolute; top:0; left:50%; width:1px; height:100%; background: rgba(0,255,0,0.4); }
-        .radar-grid-h { position: absolute; top:50%; left:0; width:100%; height:1px; background: rgba(0,255,0,0.4); }
-        .radar-circle { position: absolute; top:25%; left:25%; width:50%; height:50%; border-radius: 50%; border: 1px dashed rgba(0,255,0,0.4); }
-        @keyframes radar-spin { 100% { transform: rotate(360deg); } }
-
-        /* 控制列表 */
-        .control-list { flex: 1; overflow-y: auto; padding: 15px; }
-        .control-list-title { text-align: center; border-bottom: 1px dashed var(--primary); padding-bottom: 8px; margin-bottom: 15px; font-weight: bold;}
-        .control-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 10px; border: 1px solid rgba(0,255,0,0.2); margin-bottom: 8px; font-size: 13px; background: rgba(0,20,0,0.5);
-        }
-        .control-item:hover { background: rgba(0,255,0,0.1); }
-        .toggle-btn { margin: 0; padding: 4px 12px; font-size: 12px; border: none; font-weight: bold; cursor: pointer;}
-        .toggle-btn.on { background: var(--primary); color: #000; }
-        .toggle-btn.off { background: #550000; color: #ff0000; border: 1px solid #ff0000; }
 
         .yn-btn { color: #fff; cursor: pointer; text-decoration: underline; margin: 0 5px; font-weight: bold; }
         .yn-btn:hover { color: var(--primary); }
         .blink { animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0; } }
 
+        /* 高级重合 HUD 悬浮组件 */
+        .hud-panel {
+            position: absolute; background: rgba(0, 5, 0, 0.88); border: var(--border);
+            box-shadow: 0 0 20px rgba(0,255,0,0.3); backdrop-filter: blur(4px);
+            opacity: 0; pointer-events: none; transform: translateY(-10px);
+            transition: opacity 0.5s ease, transform 0.5s ease; z-index: 100;
+        }
+        .hud-panel.visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+        /* 左上角雷达 */
+        .hud-radar { top: 20px; left: 20px; width: 220px; height: 220px; padding: 10px; }
+        .radar-container {
+            width: 100%; height: 100%; border-radius: 50%; border: 1px solid var(--primary); 
+            background: rgba(0, 20, 0, 0.4); overflow: hidden; position: relative;
+        }
+        .radar-scan {
+            position: absolute; top: 50%; left: 50%; width: 200px; height: 200px;
+            background: conic-gradient(from 0deg, transparent 75%, rgba(0, 255, 0, 0.7) 100%);
+            transform-origin: 0 0; animation: radar-spin 2.5s linear infinite;
+        }
+        .radar-grid { position: absolute; top:0; left:50%; width:1px; height:100%; background: rgba(0,255,0,0.3); }
+        .radar-grid-h { position: absolute; top:50%; left:0; width:100%; height:1px; background: rgba(0,255,0,0.3); }
+        .radar-circle { position: absolute; top:25%; left:25%; width:50%; height:50%; border-radius: 50%; border: 1px dashed rgba(0,255,0,0.2); }
+        @keyframes radar-spin { 100% { transform: rotate(360deg); } }
+
+        /* 右上角控制台 (允许视觉上重合堆叠在全屏文本上方) */
+        .hud-control { top: 20px; right: 20px; width: 340px; max-height: 480px; display: flex; flex-direction: column; }
+        .control-header { background: var(--primary-dim); padding: 8px 12px; font-size: 13px; font-weight: bold; border-bottom: var(--border); }
+        .control-list { flex: 1; overflow-y: auto; padding: 12px; }
+        .control-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; border: 1px solid rgba(0,255,0,0.15); margin-bottom: 6px; font-size: 12px;
+            background: rgba(0,0,0,0.5);
+        }
+        .toggle-btn { margin: 0; padding: 2px 8px; font-size: 11px; border: none; font-weight: bold; cursor: pointer; }
+        .toggle-btn.on { background: var(--primary); color: #000; }
+        .toggle-btn.off { background: #400000; color: #ff3333; border: 1px solid #ff0000; }
+
+        /* 底部固定全局总进度条 */
+        .bottom-progress {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 40px;
+            background: #050505; border-top: var(--border); display: flex; align-items: center; padding: 0 20px;
+            font-size: 12px; z-index: 200;
+        }
+        .progress-track { flex: 1; height: 10px; border: 1px solid var(--primary); margin: 0 15px; position: relative; background: #000; }
+        .progress-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
+
     </style>
 </head>
 <body>
 
     <div id="boot-screen" class="screen active">
-        <div class="terminal" id="boot-terminal"></div>
+        <div class="terminal-full" id="boot-terminal" style="overflow-y:auto;"></div>
     </div>
 
     <div id="login-screen" class="screen">
         <div class="panel">
-            <h2>P.H.A.N.T.O.M  S.Y.S.T.E.M</h2>
-            <p>请输入底层授权密钥进行身份核验</p>
-            <input type="text" id="auth-key" placeholder="INPUT LICENSE KEY..." style="width: 280px; text-transform: uppercase;">
+            <h2>SYSTEM AUTHORIZATION</h2>
+            <p>ACCESS CODE REQUIRED FOR KERNEL SPACE ATTACHMENT</p>
+            <input type="text" id="auth-key" placeholder="ENTER ACCESS KEY..." style="width: 280px; text-transform: uppercase; text-align: center;">
             <br>
-            <button onclick="verifyKey()">AUTH & LOGIN</button>
+            <button onclick="verifyKey()">INITIALIZE AUTHENTICATION</button>
         </div>
     </div>
 
     <div id="self-check-screen" class="screen">
-        <div class="terminal" id="check-terminal"></div>
+        <div class="terminal-full" id="check-terminal" style="overflow-y:auto; font-size:13px;"></div>
     </div>
 
     <div id="game-screen" class="screen">
-        <div class="panel" style="max-width: 950px;">
-            <button class="top-btn right" onclick="logout()">注销 (LOGOUT)</button>
-            <h2>选择挂载目标 (SELECT TARGET)</h2>
+        <div class="panel" style="max-width: 1000px;">
+            <button class="top-btn" onclick="logout()">LOGOUT</button>
+            <h2>TARGET ENVIRONMENT MATRIX</h2>
             
             <div class="game-category">
-                <div class="game-category-title">▶ 竞技射击特供 (Competitive Shooters)</div>
+                <div class="game-category-title">▶ REGIONAL TARGET ENVIROMENTS (亚洲特供区)</div>
                 <div class="game-grid">
-                    <div class="game-card" onclick="selectGame('和平精英', 'TslGame.exe', 'Tencent-ACE')">和平精英</div>
-                    <div class="game-card" onclick="selectGame('无畏契约', 'VALORANT.exe', 'Vanguard')">无畏契约</div>
-                    <div class="game-card" onclick="selectGame('CS2', 'cs2.exe', 'VAC-Live')">CS2</div>
-                    <div class="game-card" onclick="selectGame('Apex 英雄', 'r5apex.exe', 'EAC')">Apex 英雄</div>
-                    <div class="game-card" onclick="selectGame('彩虹六号', 'RainbowSix.exe', 'BattlEye')">彩虹六号</div>
+                    <div class="game-card" onclick="selectGame('和平精英', 'TslGame.exe', 'Tencent-Anti')">和平精英</div>
+                    <div class="game-card" onclick="selectGame('无畏契约', 'VALORANT.exe', 'Riot-Vanguard')">无畏契约</div>
+                    <div class="game-card" onclick="selectGame('穿越火线', 'crossfire.exe', 'TenProtect')">穿越火线</div>
+                    <div class="game-card" onclick="selectGame('暗区突围', 'ArenaBreakout.exe', 'ACE-Sec')">暗区突围</div>
+                    <div class="game-card" onclick="selectGame('逆战', 'NZ.exe', 'TenProtect')">逆战</div>
                 </div>
             </div>
 
             <div class="game-category">
-                <div class="game-category-title">▶ 开放世界/硬核 (Open World & Hardcore)</div>
+                <div class="game-category-title">▶ GLOBAL DIRECT ACCESS MATRIX (国际直连区)</div>
                 <div class="game-grid">
+                    <div class="game-card" onclick="selectGame('CS2', 'cs2.exe', 'Valve-VAC')">CS2</div>
+                    <div class="game-card" onclick="selectGame('PUBG', 'TslGame.exe', 'BattlEye')">PUBG</div>
+                    <div class="game-card" onclick="selectGame('Apex 英雄', 'r5apex.exe', 'EasyAntiCheat')">Apex 英雄</div>
+                    <div class="game-card" onclick="selectGame('地狱潜者2', 'helldivers2.exe', 'nProtect')">地狱潜者2</div>
                     <div class="game-card" onclick="selectGame('逃离塔科夫', 'EscapeFromTarkov.exe', 'BattlEye')">逃离塔科夫</div>
-                    <div class="game-card" onclick="selectGame('暗区突围', 'ArenaBreakout.exe', 'ACE')">暗区突围</div>
-                    <div class="game-card" onclick="selectGame('RUST', 'RustClient.exe', 'EAC')">RUST</div>
-                    <div class="game-card" onclick="selectGame('GTA V', 'GTA5.exe', 'Rockstar')">GTA V</div>
-                    <div class="game-card" onclick="selectGame('赛博朋克2077', 'Cyberpunk2077.exe', 'None')">赛博朋克2077</div>
                 </div>
             </div>
         </div>
@@ -221,100 +215,96 @@
 
     <div id="driver-screen" class="screen">
         <div class="panel">
-            <button class="top-btn right" onclick="switchScreen('game-screen')">BACK</button>
-            <h2>内核注入模式配置 (KERNEL CONFIG)</h2>
-            <p>当前锁定目标：<span id="selected-game-name" style="color:#fff; font-weight:bold;"></span></p>
-            <div style="text-align: left; margin: 20px auto; width: 85%;">
-                <label>注入模式 (Injection Vector)：</label><br>
-                <select style="width:100%; font-family: 'Courier New', sans-serif;">
-                    <option>0x01 - EFI Bootkit (底层引导欺骗)</option>
-                    <option>0x02 - PCIe DMA Hardware (外置硬件直接内存读取)</option>
-                    <option>0x03 - Ring0 Thread Hijack (无痕驱动线程劫持)</option>
-                    <option>0x04 - Hypervisor VT-x (虚拟机硬件层级静默)</option>
-                    <option>0x05 - SMM System Management Mode (系统管理模式级)</option>
-                    <option>0x06 - LSASS Memory Injection (系统进程内存注入)</option>
-                    <option>0x07 - Kernel Callback Mutation (内核回调变异)</option>
+            <button class="top-btn" onclick="switchScreen('game-screen')">BACK</button>
+            <h2>KERNEL ATTACHMENT MODE</h2>
+            <p>TARGET PROCESS: <span id="selected-game-name" style="color:#fff; font-weight:bold;"></span></p>
+            <div style="text-align: left; margin: 15px auto; width: 85%; font-size: 13px;">
+                <label>CORE INJECTION MODE (注入模式选择)：</label><br>
+                <select style="width:100%;" id="inject-mode">
+                    <option>[METHOD 1] 无痕驱动线程注入 (Ring0 Kernel Thread)</option>
+                    <option>[METHOD 2] 底层引导结构欺骗 (EFI Bootkit V2)</option>
+                    <option>[METHOD 3] 硬件直读直接内存访问 (PCIe DMA Hardware)</option>
+                    <option>[METHOD 4] 内存幽灵映射劫持 (Ghost Mapping Hijack)</option>
+                    <option>[METHOD 5] 虚拟机外壳超视距读取 (Hypervisor VT-x)</option>
+                    <option>[METHOD 6] 内核级句柄劫持寄存器 (Kernel Handle Hijack)</option>
+                    <option>[METHOD 7] 系统进程克隆内存空洞 (Process Hollowing Hook)</option>
                 </select>
                 <br><br>
-                <label>内核版本 (Kernel Version)：</label><br>
-                <select id="driver-version" style="width:100%; font-family: 'Courier New', sans-serif;">
-                    <option value="v10.5">v10.5 - 动态云编译版 (Cloud Polymorphic) [极度安全]</option>
-                    <option value="v9.2">v9.2 - 私有独立签发版 (Private Signed) [安全]</option>
-                    <option value="v8.8">v8.8 - 长期稳定通道版 (LTS Channel) [推荐]</option>
-                    <option value="v7.4">v7.4 - 测试分支版 (Beta Branch) [存在风险]</option>
-                    <option value="v6.1">v6.1 - 旧版硬件断点版 (HWBP Legacy) [特征警告]</option>
-                    <option value="v5.0">v5.0 - 纯内存读写版 (RPM/WPM) [高危易封]</option>
-                    <option value="v3.1">v3.1 - 远古无保护版 (Naked Module) [必定拉闸]</option>
-                    <option value="v1.0">v1.0 - 开发者测试版 (Dev Only) [拒绝服务]</option>
+                <label>DRIVER ARCHITECTURE VERSION (内核驱动版本)：</label><br>
+                <select id="driver-version" style="width:100%;" onchange="checkDriverVersion(this)">
+                    <option value="v12.1">v12.1 - 零特征云端编译动态加壳版 (安全)</option>
+                    <option value="v11.4">v11.4 - 影子内核物理隔离版 (稳定)</option>
+                    <option value="v10.0">v10.0 - 硬件随机特征重构版 (推荐)</option>
+                    <option value="v9.2">v9.2 - 经典内核挂钩注入版 (中危)</option>
+                    <option value="v8.0">v8.0 - 远线程内存覆写版 (高危)</option>
+                    <option value="v7.5">v7.5 - 基础应用层钩子版 (极高危)</option>
+                    <option value="v3.0">v3.0 - 废弃内存重组版 (必封)</option>
                 </select>
             </div>
-            <button onclick="switchScreen('feature-screen')" style="font-weight:bold;">进入模块装配 (NEXT)</button>
+            <button onclick="switchScreen('feature-screen')">PROCEED TO MODULES</button>
+        </div>
+    </div>
+
+    <div id="driver-alert-modal" class="modal-overlay">
+        <div class="warning-box">
+            <h3 style="margin-top:0;">⚠ DRIVER SIGNATURE WARNING ⚠</h3>
+            <p>您选择的旧版驱动内核特征库已被反作弊系统列入黑名单！<br>强行加载将直接导致机器码封禁风险。</p>
+            <button onclick="closeModal('driver-alert-modal')">ACKNOWLEDGE RISK</button>
+        </div>
+    </div>
+
+    <div id="pre-flash-modal" class="modal-overlay">
+        <div class="warning-box" style="border-color: #ffaa00; background: #1a1000; color: #ffaa00;">
+            <h3 style="margin-top:0;">⚠ INJECTION INTERCEPTED ⚠</h3>
+            <p>系统即将把编译完成的 Payload 刷入系统的 Ring0 极密内存空间。<br>此操作无法被撤销，请确保目标环境已完全就绪！</p>
+            <button onclick="confirmAndExecuteFlash()" style="background: #ffaa00; color: #000;">AGREE & EXECUTE</button>
+            <button onclick="closeModal('pre-flash-modal')" style="background: transparent; color: #ffaa00; border: 1px solid #ffaa00;">CANCEL</button>
         </div>
     </div>
 
     <div id="feature-screen" class="screen">
         <div class="panel" style="padding:0; overflow:hidden;">
             <div class="macos-window">
-                <button class="triangle-btn" onclick="toggleAllTrees()" title="展开/折叠全部">▶</button>
                 <div class="macos-header">
-                    <strong>模块参数设置中心 (Module Setup)</strong>
-                    <button class="top-btn right" style="top: 8px;" onclick="switchScreen('driver-screen')">BACK</button>
+                    <span style="cursor:pointer; font-size: 16px; margin-right: 10px;" onclick="toggleAllTrees()" title="全展/折叠结构树">▼</span>
+                    <strong>MODULE PARAMETER LOGIC CONFIGURATION</strong>
+                    <button class="top-btn" style="top: 6px;" onclick="switchScreen('driver-screen')">BACK</button>
                 </div>
-                <div class="macos-body" id="dynamic-features">
-                    </div>
+                <div class="macos-body" id="dynamic-features"></div>
             </div>
-            <div style="padding: 15px; background: #001100; border-top: var(--border);">
-                <button onclick="showWarningModal()" style="width: 100%; margin:0; font-weight:bold; font-size:16px;">[ 编译并执行刷入 (COMPILE & INJECT) ]</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="pre-inject-warning" class="modal-overlay">
-        <div class="warning-box">
-            <h3>[ STRICT WARNING ]</h3>
-            <p style="font-size:14px; line-height:1.6; text-align:left;">
-                即将向目标进程 <strong id="warn-process" style="color:#fff;"></strong> 注入未经签名的外置代码。<br><br>
-                此操作将拦截反作弊系统 (Anti-Cheat) 的心跳包并修改底层内存指针。如果您的环境隔离未完全生效，或者当前反作弊引擎已热更新，您将面临<span style="text-decoration:underline;">永久封禁硬件机器码</span>的风险。<br><br>
-                您是否确认当前系统环境绝对安全并继续执行？
-            </p>
-            <div>
-                <button onclick="document.getElementById('pre-inject-warning').style.display='none'" style="background:#555;">取消 (CANCEL)</button>
-                <button onclick="startInjection()">强制确认 (FORCE INJECT)</button>
+            <div style="padding: 15px; background: #020f02;">
+                <button onclick="triggerFlashWarning()" style="width: 100%; margin:0; font-weight:bold; letter-spacing: 1px;">COMPILE AND FLASH PAYLOAD</button>
             </div>
         </div>
     </div>
 
     <div id="injection-screen" class="screen">
         <div class="injection-container">
-            <div class="terminal" id="terminal-output"></div>
             
+            <div class="terminal-full" id="terminal-output"></div>
+
+            <div class="hud-panel hud-radar" id="hud-radar-panel">
+                <div class="radar-container">
+                    <div class="radar-grid"></div>
+                    <div class="radar-grid-h"></div>
+                    <div class="radar-circle"></div>
+                    <div class="radar-scan"></div>
+                </div>
+            </div>
+
+            <div class="hud-panel hud-control" id="hud-control-panel">
+                <div class="control-header">LIVE CONTROL INTERFACE</div>
+                <div class="control-list" id="control-items-container"></div>
+            </div>
+
             <div class="bottom-progress">
-                <span style="font-weight:bold;">SYS_STATUS: </span>
-                <div class="progress-bar-bg">
-                    <div class="progress-fill" id="total-progress-fill"></div>
+                <span id="progress-status" style="width: 220px; text-align: left;">STATUS: IDLE</span>
+                <div class="progress-track">
+                    <div class="progress-fill" id="main-progress-fill"></div>
                 </div>
-                <span class="progress-text" id="total-progress-text">0.00%</span>
+                <span id="progress-percent" style="width: 50px; text-align: right;">0%</span>
             </div>
 
-            <div class="floating-widget widget-top-left" id="radar-widget">
-                <div style="background:rgba(0,255,0,0.2); padding:5px 10px; font-size:12px; font-weight:bold; border-bottom:var(--border);">[ RADAR SYNC ]</div>
-                <div class="radar-box">
-                    <div class="radar-container">
-                        <div class="radar-grid"></div>
-                        <div class="radar-grid-h"></div>
-                        <div class="radar-circle"></div>
-                        <div class="radar-scan"></div>
-                        </div>
-                </div>
-            </div>
-
-            <div class="floating-widget widget-top-right" id="control-widget">
-                <div style="background:rgba(0,255,0,0.2); padding:5px 10px; font-size:12px; font-weight:bold; border-bottom:var(--border);">[ CONTROL PANEL ]</div>
-                <div class="control-list">
-                    <div id="control-items-container">
-                        </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -322,68 +312,70 @@
         const VALID_KEY = "TRX99";
         let targetGame = {};
 
-        // 扩充的游戏功能数据库，确保每个功能不同
+        // 10款游戏完全独立的差异化功能数据库
         const GAME_FEATURES_DB = {
             '和平精英': {
-                'Visuals (透视)': ['方框透视', '骨骼与射线', '载具与油量', '高级物资过滤', '血量护甲显化'],
-                'Aimbot (自瞄)': ['预测自瞄(Bullet Drop)', '倒地过滤', '掩体判断(VisCheck)', '微自瞄(RCS)'],
-                'Memory (内存)': ['全局无后座', '子弹追踪(Magic Bullet)', '上帝视角', '跳伞秒落地'],
-                'Misc (杂项)': ['2D动态雷达', '旁路过检(Bypass)', '过直播防截图', '清理本地Log']
+                '视觉渲染': ['三维方框', '骨骼脉冲', '物理载具', '空投定位', '射线视距'],
+                '弹道修正': ['概率自瞄', '掩体扫描', '子弹追踪', '无后坐力模式'],
+                '内存重组': ['急速降落', '全视角加速', '高危飞天']
             },
             '无畏契约': {
-                'Visuals (透视)': ['Glow外发光透视', '精细骨骼ESP', '血条/护甲', '技能冷却监控', '小地图共享'],
-                'Aimbot (自瞄)': ['磁性自瞄(Smooth Aim)', '扳机自瞄(TriggerBot)', '独立后坐力压枪', '自动急停(Auto Stop)'],
-                'Memory (内存)': ['免疫闪光/烟雾', '第三人称视角', '强制断网(Lag Switch)'],
-                'Misc (杂项)': ['过 Vanguard', '截图黑屏保护(StreamProof)', '解锁机器码限制(Spoofer)']
+                '环境感知': ['Vanguard外发光', '微秒骨骼', '小地图雷达', '敌方技能冷却'],
+                '底层辅助': ['磁性平滑微调', 'RC压枪补偿', '毫秒级自动急停']
             },
             'CS2': {
-                'Visuals (透视)': ['2D/3D方框', '骨骼ESP', 'C4炸弹倒计时', '手雷物理轨迹预测', '丢弃武器高亮', '视角射线'],
-                'Aimbot (自瞄)': ['静默自瞄(Silent Aim)', 'Hitbox优先级选择', '独立RCS压枪参数', 'FOV动态调整'],
-                'Movement (身法)': ['连跳(Bhop)', '自动急停(Auto Strafe)', '边缘跳(Edge Jump)'],
-                'Misc (杂项)': ['防闪光(NoFlash)', 'OBS防录制', '自动接受匹配', '改名假身']
+                '渲染矩阵': ['传统方框', '手雷物理轨迹', 'C4高精密倒计时', '武器掉落视窗'],
+                '微核注入': ['静默锁头', '独立光效防闪', 'OBS防录制挂载']
+            },
+            'PUBG': {
+                '高级透视': ['物资精细过滤', '载具余油显示', '团队编号解析'],
+                '弹道解算': ['空气阻力预判', '下坠宏解算', '零晃动狙击']
+            },
+            '暗区突围': {
+                '声纳扫描': ['全声纹可视化', '男团特定标记', '高价值撤离点解析'],
+                '骨骼修正': ['全身关节点防震', '肢体损毁判定修复']
+            },
+            '逆战': {
+                '塔防专配': ['全屏怪物血量', '金币伪装(视觉)', '陷阱爆破点优化'],
+                '秒杀机制': ['弱点锁定', '高频射击微调']
+            },
+            '穿越火线': {
+                '生化专训': ['生化幽灵血条', '幽灵距离警报', '击退力增强修改'],
+                '传统修正': ['零秒换弹', '瞬击弹道', '幽灵模式显形']
+            },
+            '地狱潜者2': {
+                '战略配备': ['一键自动输入指令', '虫巢/机器人透视', '样本精确标记'],
+                '武器属性': ['过热免疫', '无限弹药(底层伪装)', '全图高低差无视']
             },
             '逃离塔科夫': {
-                'Visuals (透视)': ['玩家/AI骨骼ESP', '撤离点显示', '高价值物资(红卡/显卡)透视', '容器内部透视', '地雷区警告'],
-                'Aimbot (自瞄)': ['高精度预判自瞄', '无视弹道下坠', '锁定特定部位', '盲射修正'],
-                'Memory (内存)': ['无限体力', '移除负重惩罚', '瞬间开门/搜索', '无后座/无扩散'],
-                'Misc (杂项)': ['战利品吸附(危险)', '夜视/热成像模式强制开启', '跳过加载动画']
-            },
-            'GTA V': {
-                'Player (玩家)': ['无敌模式(God Mode)', '隐身', '超级跳跃', '无限子弹/无需换弹', '通缉星级清零'],
-                'Vehicle (载具)': ['刷出指定载具', '载具无敌', '载具加速/飞天', '喇叭爆炸'],
-                'World (世界)': ['传送至导航点', '控制天气/时间', '冻结所有NPC', '清除附近实体'],
-                'Network (战局)': ['防踢出/崩溃保护', '踢出其他玩家', '发送全服消息']
+                '撤离扫描': ['全地图AI/Player划分', '尸体高价值过滤', '集装箱物资明细'],
+                '物理重组': ['耐力无限伪装', '骨折无视冲刺', '零卡顿延迟']
             },
             '赛博朋克2077': {
-                'Hacks (修改)': ['锁定生命/耐力', '锁定内存容量(RAM)', '一击必杀', '隐身模式', '无限二段跳'],
-                'Items (物品)': ['修改金钱(Eddies)', '无限消耗品/手雷', '解锁所有图纸', '强制获取不朽武器'],
-                'Misc (杂项)': ['游戏速度调节', '无视负重', '快速骇入无冷却']
-            },
-            '默认配置': {
-                'Visuals (视觉)': ['基础方框', '骨骼渲染', '距离显示'],
-                'Aimbot (自瞄)': ['平滑追踪', '按键触发'],
-                'Memory (内存)': ['后坐力修改'],
-                'Misc (杂项)': ['防截图保护']
+                '黑客超频': ['无限智能弹药', '全义体义眼无冷却', '一键突入RAM上限'],
+                '数值视窗': ['不朽武器暴击锁定', '全属性高阶过载']
             }
         };
 
-        // 启动超长滚动动画
+        // 1. 开场极长日志
         window.onload = async () => {
             const term = document.getElementById('boot-terminal');
             const bootLogs = [
-                "PHANTOM OS v11.4.9 BOOT SEQUENCE INITIATED...",
-                "LOADING KERNEL MODULES... OK",
-                "MOUNTING VIRTUAL FILESYSTEM (VFS)... OK",
-                "INITIALIZING CRYPTO SUBSYSTEM... SHA-512 ENABLED",
-                "ESTABLISHING SECURE PROTOCOLS... DONE",
-                "CHECKING HARDWARE ID... [MATCHED]",
-                "VERIFYING NETWORK TUNNEL... [IP MASKED]",
-                "ALLOCATING MEMORY POOL FOR UI... DONE",
-                "LAUNCHING GRAPHICAL ENVIRONMENT..."
+                "PHANTOM TERMINAL CORE SYSTEM INITIALIZING...",
+                "LOADING BASIC MEMORY MANAGEMENT UNIT... SUCCESS",
+                "SETTING UP ENCRYPTED DE-VIRTUALIZATION LAYER...",
+                "CHECKING CPU COMPATIBILITY (VT-X/AMD-V)... DETECTED",
+                "SECURING INTEGRITY CHECK AGAINST DRIVER BYPASS...",
+                "VIRTUAL BUFFER ALLOCATED AT ADDRESS Space 0x7FFA201B",
+                "SYNCHRONIZING INTERNAL CLOCK WITH BLOCKCHAIN SERVER...",
+                "DECRYPTING PHANTOM KEYSTREAM HANDSHAKE COMPONENT...",
+                "LOADING GRAPHICAL HARDWARE ACCELERATION STACK...",
+                "READY. SWITCHING TO ACCESS ENTRY SCREEN."
             ];
             for (let log of bootLogs) {
-                term.innerHTML += log + "<br>";
-                await new Promise(r => setTimeout(r, 100 + Math.random() * 150));
+                term.innerHTML += `[SYSTEM] ${log}<br>`;
+                term.scrollTop = term.scrollHeight;
+                await new Promise(r => setTimeout(r, 100 + Math.random() * 80));
             }
             setTimeout(() => switchScreen('login-screen'), 300);
         };
@@ -400,37 +392,41 @@
 
         function verifyKey() {
             const keyInput = document.getElementById('auth-key').value.trim().toUpperCase();
-            runAuthCheck(keyInput === VALID_KEY || keyInput === ''); // 测试方便允许空
+            runAuthCheck(keyInput === VALID_KEY);
         }
 
-        // 英文自检动画变长
+        // 2. 超长滚动自检
         async function runAuthCheck(isValid) {
             switchScreen('self-check-screen');
             const term = document.getElementById('check-terminal');
             term.innerHTML = "";
-            const logs = [
-                "> INITIALIZING CONNECTION TO DEEP-WEB AUTH SERVER...",
-                "> ROUTING THROUGH PROXY CHAIN [DE -> RU -> HK]...",
-                "> TRANSMITTING ENCRYPTED KEY (RSA-2048)...",
-                "> AWAITING RESPONSE FROM MAIN DATABASE...",
-                "> VERIFYING HARDWARE SIGNATURE (MAC/HWID/SMBIOS)...",
-                "> CHECKING SUBSCRIPTION STATUS...",
-                "> FETCHING LATEST OFFSET OFFSETS...",
-                "> COMPILING DYNAMIC SIGNATURES..."
+            
+            const checkLogs = [
+                ">> ESTABLISHING HANDSHAKE TO CLOUD SYSTEM DATABASE...",
+                ">> ALLOCATING SECURE TLS SOCKET STREAM...",
+                ">> TRANSMITTING SHA-256 ENCRYPTED AUTH KEY...",
+                ">> WAITING FOR RESPONSE NODE RESPONSE...",
+                ">> [SERVER] NODE COMPLIANCE VERIFIED.",
+                ">> FETCHING HARDWARE HWID SIGNATURE...",
+                ">> SCANNING REGINSTRY HOOKS FOR TRACE DETECTION...",
+                ">> ANALYZING MOTHERBOARD UUID...",
+                ">> ANALYZING HARD DRIVE SERIAL NUMBER...",
+                ">> COMPILING SYNC SESSION TOKEN...",
+                ">> ENFORCING ANTI-DEBUGGING GUARDRAILS..."
             ];
 
-            for (let log of logs) {
-                term.innerHTML += log + "<br>";
-                await new Promise(r => setTimeout(r, 150 + Math.random() * 200));
+            for (let log of checkLogs) {
+                term.innerHTML += `${log}<br>`;
+                term.scrollTop = term.scrollHeight;
+                await new Promise(r => setTimeout(r, 150 + Math.random() * 150));
             }
 
             if (isValid) {
-                term.innerHTML += "<br><span style='color: #0f0; font-weight:bold;'>> [SUCCESS] LICENSE VALID. ALL CHECKS PASSED. ACCESS GRANTED.</span><br>";
-                await new Promise(r => setTimeout(r, 800));
+                term.innerHTML += "<span style='color: #0f0;'>>> [SUCCESS] KEY VERIFIED. MATRICES ACTIVE.</span><br>";
+                await new Promise(r => setTimeout(r, 500));
                 switchScreen('game-screen');
             } else {
-                term.innerHTML += "<br><span style='color: #ff0000; font-weight: bold;'>> [ERROR] INVALID LICENSE KEY OR HARDWARE MISMATCH.</span><br>";
-                term.innerHTML += "> INITIATING SELF-DESTRUCT SEQUENCE OF LOGS... ABORTING...";
+                term.innerHTML += "<span style='color: #ff0000; font-weight: bold;'>>> [REJECTED] INVALID ACCESS CODE LICENSE OR MACHINE BOUND MATCH FAILED.</span><br>";
                 await new Promise(r => setTimeout(r, 1500));
                 switchScreen('login-screen');
             }
@@ -438,22 +434,32 @@
 
         function selectGame(name, process, ac) {
             targetGame = { name: name, process: process, ac: ac };
-            document.getElementById('selected-game-name').innerText = `${name} (${process})`;
-            document.getElementById('warn-process').innerText = process;
+            document.getElementById('selected-game-name').innerText = `${name} [${process}]`;
             generateFeatureUI(name);
             switchScreen('driver-screen');
         }
 
-        // 动态生成游戏功能菜单
+        function checkDriverVersion(select) {
+            const badVersions = ['v9.2', 'v8.0', 'v7.5', 'v3.0'];
+            if(badVersions.includes(select.value)) {
+                document.getElementById('driver-alert-modal').style.display = 'flex';
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        // 动态配置结构树
         function generateFeatureUI(gameName) {
-            const db = GAME_FEATURES_DB[gameName] || GAME_FEATURES_DB['默认配置'];
+            const db = GAME_FEATURES_DB[gameName] || GAME_FEATURES_DB['和平精英'];
             let html = '';
             for(let category in db) {
                 html += `
                 <div class="tree-group">
                     <div class="tree-header" onclick="toggleTree(this)">▼ ${category}</div>
                     <div class="tree-content">
-                        ${db[category].map((f, i) => `<label class="feature-item"><input type="checkbox" value="${f}" checked> ${f}</label>`).join('')}
+                        ${db[category].map((f, i) => `<label class="feature-item"><input type="checkbox" value="${f}" ${i<2?'checked':''}> ${f}</label>`).join('')}
                     </div>
                 </div>`;
             }
@@ -471,14 +477,10 @@
             }
         }
 
-        // 点击小三角展开/折叠全部
         let isAllExpanded = true;
         function toggleAllTrees() {
             isAllExpanded = !isAllExpanded;
             const headers = document.querySelectorAll('#dynamic-features .tree-header');
-            const tri = document.querySelector('.triangle-btn');
-            tri.style.transform = isAllExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
-            
             headers.forEach(h => {
                 const content = h.nextElementSibling;
                 if (isAllExpanded) {
@@ -491,112 +493,173 @@
             });
         }
 
-        function showWarningModal() {
-            document.getElementById('pre-inject-warning').style.display = 'flex';
+        // 刷入前拦截弹窗
+        function triggerFlashWarning() {
+            document.getElementById('pre-flash-modal').style.display = 'flex';
         }
 
-        // 刷入界面：底层滚动，更长时间
-        function startInjection() {
-            document.getElementById('pre-inject-warning').style.display = 'none';
+        function confirmAndExecuteFlash() {
+            closeModal('pre-flash-modal');
             switchScreen('injection-screen');
-            runTerminalSimulation();
+            // 重置HUD和进度条
+            document.getElementById('hud-radar-panel').classList.remove('visible');
+            document.getElementById('hud-control-panel').classList.remove('active');
+            updateProgressBar(0, "INITIALIZING COMPILER...");
+            runLongTerminalSimulation();
         }
 
-        async function runTerminalSimulation() {
+        function updateProgressBar(percentage, statusText) {
+            document.getElementById('main-progress-fill').style.width = percentage + "%";
+            document.getElementById('progress-percent').innerText = percentage + "%";
+            document.getElementById('progress-status').innerText = "STATUS: " + statusText;
+        }
+
+        // 3. 极长全屏异步日志流模拟
+        async function runLongTerminalSimulation() {
             const terminal = document.getElementById('terminal-output');
-            const progFill = document.getElementById('total-progress-fill');
-            const progText = document.getElementById('total-progress-text');
             terminal.innerHTML = "";
-            document.getElementById('radar-widget').classList.remove('active');
-            document.getElementById('control-widget').classList.remove('active');
-            progFill.style.width = "0%";
-            progText.innerText = "0.00%";
             
             const logs = [
-                `[SYS] PREPARING ISOLATED ENVIRONMENT FOR [${targetGame.name}]...`,
-                `[COMPILER] BUILDING POLYMORPHIC PAYLOAD SPECIFIC FOR ${targetGame.process}...`,
-                `[ANTI-CHEAT] DETECTED ENGINE: ${targetGame.ac}. LOADING COUNTER-MEASURES...`,
-                `[KERNEL] HOOKING NTOpenProcess / NTQuerySystemInformation...`,
-                `[MEM] SCANNING MODULE BASE ADDRESS OF ${targetGame.process}...`,
-                `[MEM] LOCATING PEB (PROCESS ENVIRONMENT BLOCK)...`,
-                `[INJECTOR] ALLOCATING RWX MEMORY IN TARGET POOL...`,
-                `[INJECTOR] WRITING DLL INTO KERNEL MEMORY SPACE...`,
-                `[INJECTOR] RESOLVING DYNAMIC OFFSETS FOR [${targetGame.name.toUpperCase()}]...`
+                `[SYS] COMPILING ATTACHMENT MAPPER FOR [${targetGame.name}]...`,
+                `[COMPILER] CONFIGURING SYMBOLS DETECTED VIA ENVIRONMENT PATH...`,
+                `[COMPILER] GENERATING INTEL RUNTIME PAYLOAD BINARY...`,
+                `[ANTI-CHEAT] ANALYSIS LAYER TARGET: ${targetGame.ac}`,
+                `[ANTI-CHEAT] DETECTED ACTIVE MEMORY INTEGRITY STACK PROTECTION.`,
+                `[ANTI-CHEAT] FORCING BYPASS SCHEME VIA CORRESPONDING COUNTERMEASURES...`,
+                `[KERNEL] REQUESTING SEPRIVILEGE_NAME SE_DEBUG_PRIVILEGE ASSIGNMENT...`,
+                `[KERNEL] HOOKING EXALLOCATEPOOLWITHTAG FOR HIDDEN PAGE CREATION...`,
+                `[KERNEL] ACQUIRING SYSTEM CR3 CRITICAL REGISTER VALUES...`,
+                `[MEM] RESOLVING TARGET GAME EXECUTABLE HEADER: ${targetGame.process}`,
+                `[MEM] PATTERN MATCHING LOCAL SIGS FOR ENTITY LIST OFFSETS...`,
+                `[MEM] ENCRYPTED OFFSET BASE DECODED SUCCESSFULLY.`,
+                `[INJECTOR] ALLOCATING PHYSICAL VIRTUAL MEMORY ENCLAVE...`,
+                `[INJECTOR] PARSING EXECUTABLE PE HEADERS AND RE-MAPPING DESCRIPTORS...`,
+                `[INJECTOR] STRIPPING DISCARDABLE INJECTION SECTIONS...`,
+                `[DRV] CLEANING BIGPOOL POOLTRACKER ALLOCATIONS FROM KERNEL MEMORY...`,
+                `[DRV] WIPING PREFETCH AND SHIMCACHE REGINSTRY ENTRIES...`,
+                `[DRV] SPOOFING NETWORK HWID ADAPTER MAC ID...`,
+                `[SYS] SYNCING LIVE OVERLAY HOOK WITH HOST ENGINE DIRECTX LAYER...`,
+                `[SYS] SUPPRESSING EVENT TRACING FOR WINDOWS (ETW) KERNEL EVENTS...`,
+                `[SYS] OVERWRITE COMPLETED WITH ZERO RESIDUAL FOOTPRINTS.`
             ];
 
-            let totalSteps = logs.length + 30; // 日志行数 + 模拟30次快速滚动
-            let currentStep = 0;
-
-            const updateProgress = () => {
-                currentStep++;
-                let pct = Math.min((currentStep / totalSteps) * 90, 90); // 前期跑到90%
-                progFill.style.width = pct + "%";
-                progText.innerText = pct.toFixed(2) + "%";
-            };
+            let step = 0;
+            const totalSteps = logs.length;
 
             for (let log of logs) {
                 terminal.innerHTML += log + "<br>";
-                terminal.scrollTo(0, terminal.scrollHeight);
-                updateProgress();
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
+                terminal.scrollTop = terminal.scrollHeight;
+                step++;
+                let pct = Math.floor((step / totalSteps) * 60); // 编译段占 60% 进度
+                updateProgressBar(pct, "COMPILING MODULES...");
+                await new Promise(r => setTimeout(r, 250 + Math.random() * 200));
             }
 
-            // 生成一大串快速滚动的 Hex 数据
-            for(let i=0; i<30; i++) {
-                let hexStr = "[VFS_WRITE] 0x";
-                for(let j=0; j<8; j++) {
-                    hexStr += Math.floor(Math.random()*4294967295).toString(16).toUpperCase().padStart(8, '0') + " ";
-                }
-                terminal.innerHTML += hexStr + "<br>";
-                terminal.scrollTo(0, terminal.scrollHeight);
-                updateProgress();
-                await new Promise(r => setTimeout(r, 60)); // 快速滚动
+            // 刷入进度模拟
+            let currentPct = 60;
+            const progressLine = document.createElement('div');
+            terminal.appendChild(progressLine);
+            
+            while(currentPct < 100) {
+                currentPct += Math.floor(Math.random() * 4) + 1;
+                if(currentPct > 100) currentPct = 100;
+                
+                let dotCount = Math.floor(currentPct / 5);
+                let barStr = "[".padEnd(dotCount+1, "#").padEnd(21, ".");
+                progressLine.innerHTML = `[FLASH-ENGINE] WRITING TO SECURE OFFSET BLOCK: ${barStr}] ${currentPct}%`;
+                terminal.scrollTop = terminal.scrollHeight;
+                
+                updateProgressBar(currentPct, "MEM_FLASHING IN PROGRESS...");
+                await new Promise(r => setTimeout(r, 120 + Math.random() * 100));
             }
 
-            // 进度到100%
-            progFill.style.width = "100%";
-            progText.innerText = "100.00%";
-            
-            terminal.innerHTML += `<br>[SYS] CLEANING UP TRACES AND UNLOADING DRIVER MAPPER...<br>`;
-            terminal.innerHTML += `<span style="color:#0f0; font-weight:bold;">[SUCCESS] MEMORY INJECTION COMPLETED SUCCESSFULLY.</span><br><br>`;
-            terminal.innerHTML += `PROCEED TO ATTACH OVERLAY GUI WIDGETS? [<span class="yn-btn" onclick="postYInjection('Y')">Y</span> / <span class="yn-btn" onclick="postYInjection('N')">N</span>] <span class="blink">_</span>`;
-            terminal.scrollTo(0, terminal.scrollHeight);
-            
+            terminal.innerHTML += `<br>[SUCCESS] PHANTOM CORE SUCCESSFULLY ROOTED INTO TARGET MEMORY SPACE.<br><br>`;
+            terminal.innerHTML += `PROCEED TO MOUNT LIVE HUD OVERLAY INTERFACE? [<span class="yn-btn" onclick="attachHUD()">Y</span> / <span class="yn-btn" onclick="switchScreen('feature-screen')">N</span>] <span class="blink">_</span>`;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            // 快捷键支持
             const keyHandler = function(e) {
-                if (e.key.toUpperCase() === 'Y' || e.key.toUpperCase() === 'N') {
+                if (e.key.toUpperCase() === 'Y') {
                     document.removeEventListener('keydown', keyHandler);
-                    postYInjection(e.key.toUpperCase());
+                    attachHUD();
+                } else if (e.key.toUpperCase() === 'N') {
+                    document.removeEventListener('keydown', keyHandler);
+                    switchScreen('feature-screen');
                 }
             };
             document.addEventListener('keydown', keyHandler);
         }
 
-        async function postYInjection(choice) {
-            if (choice === 'N') {
-                switchScreen('feature-screen');
-                return;
-            }
-
+        // 4. 重合 HUD 挂载及全屏背景不断滚动
+        async function attachHUD() {
             const terminal = document.getElementById('terminal-output');
-            terminal.innerHTML = terminal.innerHTML.replace(/PROCEED TO ATTACH.*?<span class="blink">_<\/span>/, "");
-            terminal.innerHTML += `<br>> COMMAND ACCEPTED: Y<br>`;
+            terminal.innerHTML = terminal.innerHTML.replace(/PROCEED TO MOUNT.*?<span class="blink">_<\/span>/, "");
+            terminal.innerHTML += `<br>> HUD INTERFACE COMMAND INITIALIZED.<br>`;
             
             const postLogs = [
-                `> CREATING TRANSPARENT OVERLAY (WS_EX_LAYERED | WS_EX_TRANSPARENT)...`,
-                `> BINDING DIRECTX11 RENDERING PIPELINE...`,
-                `> SYNCING ENTITY LIST FROM ${targetGame.process}...`,
-                `> WAKING UP RADAR & CONTROL THREADS...`
+                `> INITIATING TRANSPARENT MATRICES PIPELINE...`,
+                `> OVERLAY BINDING STACK CREATED SUCCESFULLY.`,
+                `> FORCING RIGHT-HAND SIDE CONTROL WIDGET SNAP...`,
+                `> ATTACHING ACTIVE VECTOR RADAR INTERFACE TO LEFT VIEWPORT...`
             ];
 
             for (let log of postLogs) {
                 terminal.innerHTML += log + "<br>";
-                terminal.scrollTo(0, terminal.scrollHeight);
-                await new Promise(r => setTimeout(r, 400 + Math.random() * 300));
+                terminal.scrollTop = terminal.scrollHeight;
+                await new Promise(r => setTimeout(r, 300 + Math.random() * 200));
             }
 
-            // 构建并显示右上角控制窗和左上角雷达
-            buildControlPanel();
-            document.getElementById('radar-widget').classList.add('active');
-            document.getElementById('control-widget').classList.add('active');
+            updateProgressBar(100, "HUD INJECTION ACTIVE");
 
-            // 保持终端在
+            // 浮动悬浮HUD显现（左上角雷达、右上角控制面板重合堆叠在文字背景之上）
+            document.getElementById('hud-radar-panel').classList.add('visible');
+            document.getElementById('hud-control-panel').classList.add('visible');
+            
+            buildControlPanel();
+
+            // 定时向终端循环抛出红字进程丢失警告，实现全屏连续死循环滚动
+            terminal.innerHTML += `<br><span style="color: #ff0000; font-weight: bold;">[FATAL] TARGET SYSTEM PROCESS NOT READY. STANDBY MODE ENGAGED.</span><br>`;
+            
+            setInterval(() => {
+                const hexAddress = '0x' + Math.floor(Math.random() * 16777215).toString(16).toUpperCase();
+                terminal.innerHTML += `[STANDBY_LOOP] Polling memory section ${hexAddress}... Thread waiting for active handle inside ${targetGame.process}<br>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            }, 600);
+        }
+
+        function buildControlPanel() {
+            const checkedFeatures = Array.from(document.querySelectorAll('#dynamic-features input:checked')).map(cb => cb.value);
+            let html = '';
+            
+            if(checkedFeatures.length === 0) {
+                html = '<div style="text-align:center; color:#555; margin-top:20px;">NO MODULES ENABLED</div>';
+            } else {
+                checkedFeatures.forEach(feat => {
+                    html += `
+                    <div class="control-item">
+                        <span>${feat}</span>
+                        <button class="toggle-btn on" onclick="toggleFeature(this, '${feat}')">ON</button>
+                    </div>`;
+                });
+            }
+            document.getElementById('control-items-container').innerHTML = html;
+        }
+
+        window.toggleFeature = function(btn, featureName) {
+            const terminal = document.getElementById('terminal-output');
+            if (btn.classList.contains('on')) {
+                btn.classList.remove('on');
+                btn.classList.add('off');
+                btn.innerText = 'OFF';
+                terminal.innerHTML += `<span style="color:#ff3333;">> [LIVE_OVERRIDE] 实时配置变更: 模块 [${featureName}] 被强行挂起 (SUSPENDED)</span><br>`;
+            } else {
+                btn.classList.remove('off');
+                btn.classList.add('on');
+                btn.innerText = 'ON';
+                terminal.innerHTML += `<span style="color:#00ff00;">> [LIVE_OVERRIDE] 实时配置变更: 模块 [${featureName}] 重新载入 (ENGAGED)</span><br>`;
+            }
+            terminal.scrollTop = terminal.scrollHeight;
+        };
+    </script>
+</body>
+</html>
