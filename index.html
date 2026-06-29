@@ -3,989 +3,600 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>星烬工具站</title>
+    <title>PHANTOM - 核心终端</title>
     <style>
-        /* CSS 变量与主题 */
-        :root {
-            --sys-bg: #000000;
-            --glass-bg: rgba(20, 20, 20, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.5);
-            --accent-color: #007aff;
-            --danger-color: #ff3b30;
-            --input-bg: rgba(255, 255, 255, 0.05);
-            --modal-bg: rgba(28, 28, 30, 0.95);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-            --radius: 12px;
-            --transition-speed: 0.4s;
-        }
-
-        body.light-mode {
-            --sys-bg: #f5f5f7;
-            --glass-bg: rgba(255, 255, 255, 0.8);
-            --glass-border: rgba(0, 0, 0, 0.1);
-            --text-primary: #1d1d1f;
-            --text-secondary: rgba(0, 0, 0, 0.5);
-            --input-bg: rgba(0, 0, 0, 0.05);
-            --modal-bg: rgba(255, 255, 255, 0.95);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        body.reduce-motion * {
-            transition: none !important;
-            animation: none !important;
-        }
-
+        /* 核心字体分离：英文使用黑客终端体 Courier New，中文使用高清平滑体 */
         * {
+            font-family: 'Courier New', Courier, Monaco, 'PingFang SC', 'Microsoft YaHei', sans-serif !important;
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            user-select: none;
         }
 
-        body {
-            background-color: var(--sys-bg);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: background var(--transition-speed) ease;
+        :root {
+            --primary: #00ff00;
+            --bg: #000000;
+            --panel-bg: rgba(0, 15, 0, 0.95);
+            --border: 1px solid #00ff00;
         }
 
-        /* 基础组件 */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg); color: var(--primary);
+            overflow: hidden; 
+            -webkit-font-smoothing: antialiased;
         }
 
-        .hidden { display: none !important; }
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transform: scale(0.98);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .screen.active { opacity: 1; pointer-events: auto; transform: scale(1); }
 
-        /* --- 登录/注册界面 --- */
-        #login-view {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            perspective: 1000px; /* 为3D翻转动画做准备 */
+        .panel {
+            background: var(--panel-bg); border: var(--border);
+            padding: 30px; box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+            width: 85%; max-width: 950px; text-align: center; position: relative;
         }
 
-        .auth-wrapper {
-            position: relative;
-            width: 360px;
-            height: 480px;
+        h2 { text-shadow: 0 0 5px var(--primary); margin-top: 0; font-weight: normal; letter-spacing: 1px; }
+
+        input, select, button {
+            background: #000; color: var(--primary); border: var(--border);
+            padding: 8px 15px; margin: 10px; outline: none; font-size: 14px;
         }
+        button { cursor: pointer; transition: all 0.2s; }
+        button:hover { background: var(--primary); color: #000; box-shadow: 0 0 10px var(--primary); }
 
-        .auth-container {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            padding: 40px 30px;
-            text-align: center;
-            backface-visibility: hidden;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+        /* 左上/右上角按钮 */
+        .top-btn {
+            position: absolute; background: transparent;
+            color: var(--primary); border: 1px solid var(--primary); font-size: 12px; 
+            cursor: pointer; padding: 5px 10px; margin: 0;
         }
-
-        .auth-container.hidden-flip {
-            transform: rotateY(180deg);
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .auth-container.active-flip {
-            transform: rotateY(0deg);
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .auth-container h1 { font-size: 24px; margin-bottom: 30px; font-weight: 600; }
-
-        .input-group { margin-bottom: 15px; position: relative; text-align: left; }
+        .top-btn:hover { background: var(--primary); color: #000; }
+        .top-btn.right { top: 15px; right: 15px; }
         
-        .auth-input {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            background: var(--input-bg);
-            color: var(--text-primary);
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.3s ease;
+        /* 设置界面左上角小三角 */
+        .triangle-btn {
+            position: absolute; top: 10px; left: 15px; background: transparent;
+            color: var(--primary); border: none; font-size: 18px; 
+            cursor: pointer; padding: 0; margin: 0; transition: transform 0.2s;
         }
-        .auth-input:focus { border-color: var(--accent-color); }
-        .input-hint { font-size: 11px; color: var(--text-secondary); margin-top: 5px; margin-left: 5px; }
-        .error-text { color: var(--danger-color); }
+        .triangle-btn:hover { transform: scale(1.2); text-shadow: 0 0 8px var(--primary); }
 
-        .eye-btn {
-            position: absolute;
-            right: 12px;
-            top: 10px;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-            border: none;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
-            margin-bottom: 10px;
-        }
-        .btn:active { transform: scale(0.97); }
-        .btn-primary { background: var(--accent-color); color: white; }
-        .btn-primary:hover { opacity: 0.9; }
-        .btn-secondary { background: transparent; color: var(--text-primary); border: 1px solid var(--glass-border); }
-        .btn-secondary:hover { background: var(--input-bg); }
-
-        .auth-links { margin-top: 15px; font-size: 13px; color: var(--text-secondary); }
-        .auth-links span { cursor: pointer; color: var(--accent-color); }
-
-        /* --- 主界面 --- */
-        #main-view { flex: 1; display: flex; flex-direction: column; height: 100vh; }
-
-        /* 顶部导航栏 (去刘海，平整居中) */
-        .top-bar {
-            height: 60px;
-            padding: 0 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--glass-border);
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-        }
-
-        .logo-text { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
-
-        .search-box { width: 40%; max-width: 500px; }
-        .search-box input {
-            width: 100%; padding: 8px 20px; border-radius: 20px;
-            border: 1px solid var(--glass-border); background: var(--input-bg);
-            color: var(--text-primary); outline: none; text-align: center;
-        }
-
-        .user-profile {
-            display: flex; align-items: center; gap: 10px; cursor: pointer;
-            padding: 5px 10px; border-radius: 20px; transition: background 0.2s;
-        }
-        .user-profile:hover { background: var(--input-bg); }
-        .avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #333; }
-
-        /* 工具网格区域 */
-        .tools-container {
-            flex: 1; overflow-y: auto; padding: 30px 50px;
-        }
-        
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
-
-        .category-title {
-            font-size: 18px; font-weight: 600; margin: 20px 0 15px 0;
-            padding-bottom: 8px; border-bottom: 1px solid var(--glass-border);
-            text-align: center; color: var(--text-secondary);
-        }
-
-        .tools-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 20px;
-        }
-
-        .tool-card {
+        /* 游戏分类布局 */
+        .game-category { text-align: left; margin-top: 20px; border-top: 1px dashed var(--primary); padding-top: 10px; }
+        .game-category-title { font-size: 16px; margin-bottom: 10px; font-weight: bold; }
+        .game-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .game-card {
+            border: var(--border); padding: 15px 5px; cursor: pointer; transition: all 0.2s;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px 10px; border-radius: 12px; cursor: pointer;
-            transition: all 0.3s ease; text-decoration: none; color: var(--text-primary);
+            background: rgba(0, 255, 0, 0.05); font-size: 14px; font-weight: bold; text-align: center;
         }
-        .tool-card:hover { background: var(--input-bg); transform: translateY(-3px); }
-        .tool-icon {
-            width: 44px; height: 44px; border-radius: 10px; margin-bottom: 12px;
-            background: #fff; padding: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        .tool-name { font-size: 12px; text-align: center; font-weight: 500; }
+        .game-card:hover { background: rgba(0, 255, 0, 0.2); transform: translateY(-2px); }
 
-        /* --- 弹窗通用 --- */
+        /* 警告弹窗 (居中覆盖) */
         .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center;
-            z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
-            backdrop-filter: blur(5px);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 3000;
         }
-        .modal-overlay.active { opacity: 1; pointer-events: all; }
+        .warning-box { border: 2px solid #ff0000; background: #1a0000; padding: 30px; color: #ff0000; text-align: center; max-width: 500px; box-shadow: 0 0 20px rgba(255,0,0,0.3); }
+        .warning-box h3 { font-size: 20px; margin-top: 0; font-family: 'Courier New', sans-serif !important; }
+        .warning-box button { background: #ff0000; color: #fff; border: none; padding: 8px 25px; margin: 10px; font-weight: bold; }
+        .warning-box button:hover { background: #cc0000; box-shadow: 0 0 10px #ff0000; }
 
-        .modal-content {
-            background: var(--modal-bg); border: 1px solid var(--glass-border);
-            border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            width: 90%; max-width: 650px; max-height: 85vh;
-            display: flex; flex-direction: column;
-            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* macOS 风格设置界面 */
+        .macos-window {
+            border: var(--border); background: #000; width: 100%; height: 500px;
+            display: flex; flex-direction: column; text-align: left; position: relative;
         }
-        .modal-overlay.active .modal-content { transform: scale(1); }
+        .macos-header {
+            background: rgba(0, 255, 0, 0.2); padding: 12px 15px; text-align: center;
+            border-bottom: var(--border); font-size: 14px; position: relative;
+        }
+        .macos-body { padding: 15px; overflow-y: auto; flex: 1; }
+        
+        .tree-header { cursor: pointer; font-size: 14px; padding: 6px 10px; background: rgba(0,255,0,0.1); margin-top: 10px; border: 1px solid rgba(0,255,0,0.3); font-weight: bold;}
+        .tree-header:hover { background: rgba(0,255,0,0.2); }
+        .tree-content { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 15px; border: 1px dashed rgba(0,255,0,0.3); border-top: none; }
+        .feature-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+        .feature-item input { width: 14px; height: 14px; accent-color: var(--primary); filter: hue-rotate(240deg); margin: 0; }
 
-        .modal-header {
-            padding: 15px 20px; border-bottom: 1px solid var(--glass-border);
+        /* 终端全局布局 (底层全屏) */
+        .injection-container { width: 100%; height: 100%; position: relative; }
+        .terminal {
+            width: 100%; height: calc(100% - 25px); overflow-y: auto; padding: 20px;
+            color: var(--primary); text-align: left; line-height: 1.4; font-size: 13px;
+            padding-bottom: 100px;
+        }
+
+        /* 底部全局进度条 */
+        .bottom-progress {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 25px;
+            background: #000; border-top: var(--border);
+            display: flex; align-items: center; padding: 0 10px; font-size: 12px;
+            z-index: 2000;
+        }
+        .progress-bar-bg { flex: 1; height: 10px; background: rgba(0,255,0,0.2); margin: 0 15px; border: 1px solid var(--primary); position: relative;}
+        .progress-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.1s linear; }
+        .progress-text { width: 120px; text-align: right; }
+
+        /* 悬浮控件 (雷达与控制面板) */
+        .floating-widget {
+            position: absolute; background: rgba(0, 5, 0, 0.85); /* 半透明制造重叠感 */
+            border: var(--border); box-shadow: 0 0 15px rgba(0,255,0,0.2);
+            backdrop-filter: blur(3px); display: none; flex-direction: column; z-index: 1000;
+            transition: opacity 0.5s ease; opacity: 0;
+        }
+        .floating-widget.active { display: flex; opacity: 1; }
+        
+        .widget-top-left { top: 20px; left: 20px; }
+        .widget-top-right { top: 20px; right: 20px; width: 320px; max-height: 80vh; }
+
+        /* 雷达模块 */
+        .radar-box { padding: 20px; display: flex; justify-content: center; align-items: center; }
+        .radar-container {
+            width: 180px; height: 180px; border-radius: 50%; border: 1px solid var(--primary); 
+            background: rgba(0, 20, 0, 0.6); overflow: hidden; position: relative; box-shadow: inset 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        .radar-scan {
+            position: absolute; top: 50%; left: 50%; width: 180px; height: 180px;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(0, 255, 0, 0.8) 100%);
+            transform-origin: 0 0; animation: radar-spin 2s linear infinite;
+        }
+        .radar-grid { position: absolute; top:0; left:50%; width:1px; height:100%; background: rgba(0,255,0,0.4); }
+        .radar-grid-h { position: absolute; top:50%; left:0; width:100%; height:1px; background: rgba(0,255,0,0.4); }
+        .radar-circle { position: absolute; top:25%; left:25%; width:50%; height:50%; border-radius: 50%; border: 1px dashed rgba(0,255,0,0.4); }
+        @keyframes radar-spin { 100% { transform: rotate(360deg); } }
+
+        /* 控制列表 */
+        .control-list { flex: 1; overflow-y: auto; padding: 15px; }
+        .control-list-title { text-align: center; border-bottom: 1px dashed var(--primary); padding-bottom: 8px; margin-bottom: 15px; font-weight: bold;}
+        .control-item {
             display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 10px; border: 1px solid rgba(0,255,0,0.2); margin-bottom: 8px; font-size: 13px; background: rgba(0,20,0,0.5);
         }
-        .modal-header-title { flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
-        .modal-close {
-            width: 14px; height: 14px; border-radius: 50%;
-            background: var(--danger-color); cursor: pointer; border: none;
-            display: flex; justify-content: center; align-items: center;
-        }
-        .modal-close::before, .modal-close::after {
-            content: ''; position: absolute; width: 8px; height: 1px; background: rgba(0,0,0,0.6);
-            opacity: 0; transition: 0.2s;
-        }
-        .modal-close:hover::before { transform: rotate(45deg); opacity: 1; }
-        .modal-close:hover::after { transform: rotate(-45deg); opacity: 1; }
-        .modal-placeholder { width: 14px; } /* 对齐用 */
+        .control-item:hover { background: rgba(0,255,0,0.1); }
+        .toggle-btn { margin: 0; padding: 4px 12px; font-size: 12px; border: none; font-weight: bold; cursor: pointer;}
+        .toggle-btn.on { background: var(--primary); color: #000; }
+        .toggle-btn.off { background: #550000; color: #ff0000; border: 1px solid #ff0000; }
 
-        .modal-body { padding: 0; overflow-y: auto; flex: 1; }
+        .yn-btn { color: #fff; cursor: pointer; text-decoration: underline; margin: 0 5px; font-weight: bold; }
+        .yn-btn:hover { color: var(--primary); }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
 
-        /* 设置面板布局 */
-        .settings-layout { display: flex; height: 450px; }
-        .settings-sidebar {
-            width: 160px; border-right: 1px solid var(--glass-border); padding: 15px 10px;
-            background: rgba(0,0,0,0.2);
-        }
-        .settings-tab {
-            padding: 10px 15px; border-radius: 8px; cursor: pointer; margin-bottom: 5px;
-            transition: background 0.2s; font-size: 13px; color: var(--text-secondary);
-        }
-        .settings-tab:hover { background: var(--input-bg); color: var(--text-primary); }
-        .settings-tab.active { background: var(--accent-color); color: white; font-weight: 500; }
-        
-        .settings-content { flex: 1; padding: 20px 30px; overflow-y: auto; }
-        .settings-pane { display: none; animation: fadeIn 0.3s ease; }
-        .settings-pane.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* 设置项 UI */
-        .account-header {
-            display: flex; align-items: center; gap: 20px; margin-bottom: 30px;
-            padding-bottom: 20px; border-bottom: 1px solid var(--glass-border);
-        }
-        .account-header img { width: 64px; height: 64px; border-radius: 50%; border: 2px solid var(--glass-border); }
-        .account-info h2 { font-size: 18px; margin-bottom: 5px; }
-        .account-info p { font-size: 12px; color: var(--text-secondary); }
-
-        .setting-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 15px 0; border-bottom: 1px solid var(--glass-border);
-        }
-        .setting-item:last-child { border-bottom: none; }
-        
-        .toggle-switch {
-            position: relative; width: 40px; height: 22px;
-            background: rgba(255,255,255,0.2); border-radius: 12px; cursor: pointer; transition: 0.3s;
-        }
-        .toggle-switch::after {
-            content: ''; position: absolute; top: 2px; left: 2px;
-            width: 18px; height: 18px; background: white; border-radius: 50%;
-            transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .toggle-switch.active { background: var(--accent-color); }
-        .toggle-switch.active::after { transform: translateX(18px); }
-
-        /* 黑客终端 */
-        .hacker-terminal {
-            background: #050505; color: #00ff00; font-family: 'Courier New', Courier, monospace;
-            padding: 15px; border-radius: 8px; margin-top: 15px; height: 120px;
-            overflow-y: auto; font-size: 12px; border: 1px solid #333; display: none;
-            box-shadow: inset 0 0 10px rgba(0,255,0,0.1);
-        }
-
-        /* 网站详情弹窗 */
-        .site-detail-icon { width: 64px; height: 64px; border-radius: 12px; background: #fff; padding: 5px; margin: 0 auto 15px; display: block; }
-        .site-detail-title { text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 10px; }
-        .site-detail-desc { text-align: center; font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
-        .site-warning { background: rgba(255,59,48,0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 10px; border-radius: 8px; font-size: 12px; text-align: center; margin-bottom: 20px; }
-        .site-action-btns { display: flex; gap: 15px; justify-content: center; }
-
-        /* 关于与法律监管 */
-        .about-center { text-align: center; padding: 20px 0; }
-        .about-center h2 { margin-bottom: 5px; letter-spacing: 2px; }
-        .about-center p { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; }
-        
-        .about-info-line { display: flex; justify-content: center; align-items: center; gap: 10px; font-size: 13px; margin-bottom: 10px; }
-        .feedback-btn { background: var(--input-bg); border: 1px solid var(--glass-border); color: var(--text-primary); padding: 3px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; }
-        
-        .legal-section { margin-top: 30px; border-top: 1px solid var(--glass-border); padding-top: 20px; text-align: center; }
-        .legal-section h3 { font-size: 14px; margin-bottom: 15px; color: var(--text-secondary); }
-        .legal-links { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        .legal-links span { cursor: pointer; font-size: 13px; transition: color 0.2s; }
-        .legal-links span:hover { color: var(--accent-color); }
-        .google-link { color: var(--accent-color); text-decoration: none; font-size: 12px; margin-top: 20px; display: inline-block; }
-
-        /* 消息提示框 */
-        #toast {
-            position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: var(--modal-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border);
-            padding: 12px 24px; border-radius: 30px; color: var(--text-primary); font-size: 14px;
-            opacity: 0; pointer-events: none; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 2000;
-        }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-        .text-format { font-size: 13px; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; padding: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="login-view">
-        <div class="auth-wrapper">
-            <div id="login-form" class="auth-container glass-panel active-flip">
-                <h1>星烬工具站</h1>
-                <div class="input-group">
-                    <input type="text" id="login-account" class="auth-input" placeholder="用户名/邮箱/管理员账号">
-                </div>
-                <div class="input-group">
-                    <input type="password" id="login-password" class="auth-input" placeholder="密码">
-                    <button class="eye-btn" onclick="app.togglePwd('login-password', this)">👁</button>
-                </div>
-                <button class="btn btn-primary" onclick="app.login()">登录</button>
-                <button class="btn btn-secondary" onclick="app.guestLogin()">游客访问</button>
-                <div class="auth-links">
-                    没有账号？ <span onclick="app.switchAuth('register')">立即注册</span>
+    <div id="boot-screen" class="screen active">
+        <div class="terminal" id="boot-terminal"></div>
+    </div>
+
+    <div id="login-screen" class="screen">
+        <div class="panel">
+            <h2>P.H.A.N.T.O.M  S.Y.S.T.E.M</h2>
+            <p>请输入底层授权密钥进行身份核验</p>
+            <input type="text" id="auth-key" placeholder="INPUT LICENSE KEY..." style="width: 280px; text-transform: uppercase;">
+            <br>
+            <button onclick="verifyKey()">AUTH & LOGIN</button>
+        </div>
+    </div>
+
+    <div id="self-check-screen" class="screen">
+        <div class="terminal" id="check-terminal"></div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div class="panel" style="max-width: 950px;">
+            <button class="top-btn right" onclick="logout()">注销 (LOGOUT)</button>
+            <h2>选择挂载目标 (SELECT TARGET)</h2>
+            
+            <div class="game-category">
+                <div class="game-category-title">▶ 竞技射击特供 (Competitive Shooters)</div>
+                <div class="game-grid">
+                    <div class="game-card" onclick="selectGame('和平精英', 'TslGame.exe', 'Tencent-ACE')">和平精英</div>
+                    <div class="game-card" onclick="selectGame('无畏契约', 'VALORANT.exe', 'Vanguard')">无畏契约</div>
+                    <div class="game-card" onclick="selectGame('CS2', 'cs2.exe', 'VAC-Live')">CS2</div>
+                    <div class="game-card" onclick="selectGame('Apex 英雄', 'r5apex.exe', 'EAC')">Apex 英雄</div>
+                    <div class="game-card" onclick="selectGame('彩虹六号', 'RainbowSix.exe', 'BattlEye')">彩虹六号</div>
                 </div>
             </div>
 
-            <div id="register-form" class="auth-container glass-panel hidden-flip">
-                <h1>创建账号</h1>
-                <div class="input-group">
-                    <input type="text" id="reg-user" class="auth-input" placeholder="昵称" oninput="app.checkRegUser()">
-                    <div id="reg-user-hint" class="input-hint">至少两个字符不得包含除-_.以外的其他字符</div>
-                </div>
-                <div class="input-group">
-                    <input type="email" id="reg-email" class="auth-input" placeholder="邮箱" oninput="app.checkRegEmail()">
-                    <div id="reg-email-hint" class="input-hint"></div>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="reg-pass" class="auth-input" placeholder="密码">
-                    <button class="eye-btn" onclick="app.togglePwd('reg-pass', this)">👁</button>
-                </div>
-                <div class="input-group">
-                    <input type="password" id="reg-pass-confirm" class="auth-input" placeholder="确认密码">
-                    <button class="eye-btn" onclick="app.togglePwd('reg-pass-confirm', this)">👁</button>
-                </div>
-                <button class="btn btn-primary" onclick="app.register()">立即注册</button>
-                <div class="auth-links">
-                    已有账号？ <span onclick="app.switchAuth('login')">返回登录</span>
+            <div class="game-category">
+                <div class="game-category-title">▶ 开放世界/硬核 (Open World & Hardcore)</div>
+                <div class="game-grid">
+                    <div class="game-card" onclick="selectGame('逃离塔科夫', 'EscapeFromTarkov.exe', 'BattlEye')">逃离塔科夫</div>
+                    <div class="game-card" onclick="selectGame('暗区突围', 'ArenaBreakout.exe', 'ACE')">暗区突围</div>
+                    <div class="game-card" onclick="selectGame('RUST', 'RustClient.exe', 'EAC')">RUST</div>
+                    <div class="game-card" onclick="selectGame('GTA V', 'GTA5.exe', 'Rockstar')">GTA V</div>
+                    <div class="game-card" onclick="selectGame('赛博朋克2077', 'Cyberpunk2077.exe', 'None')">赛博朋克2077</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="main-view" class="hidden">
-        <div class="top-bar">
-            <div class="logo-text">星烬工具站</div>
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="搜索全球工具..." onkeyup="app.filterTools()">
+    <div id="driver-screen" class="screen">
+        <div class="panel">
+            <button class="top-btn right" onclick="switchScreen('game-screen')">BACK</button>
+            <h2>内核注入模式配置 (KERNEL CONFIG)</h2>
+            <p>当前锁定目标：<span id="selected-game-name" style="color:#fff; font-weight:bold;"></span></p>
+            <div style="text-align: left; margin: 20px auto; width: 85%;">
+                <label>注入模式 (Injection Vector)：</label><br>
+                <select style="width:100%; font-family: 'Courier New', sans-serif;">
+                    <option>0x01 - EFI Bootkit (底层引导欺骗)</option>
+                    <option>0x02 - PCIe DMA Hardware (外置硬件直接内存读取)</option>
+                    <option>0x03 - Ring0 Thread Hijack (无痕驱动线程劫持)</option>
+                    <option>0x04 - Hypervisor VT-x (虚拟机硬件层级静默)</option>
+                    <option>0x05 - SMM System Management Mode (系统管理模式级)</option>
+                    <option>0x06 - LSASS Memory Injection (系统进程内存注入)</option>
+                    <option>0x07 - Kernel Callback Mutation (内核回调变异)</option>
+                </select>
+                <br><br>
+                <label>内核版本 (Kernel Version)：</label><br>
+                <select id="driver-version" style="width:100%; font-family: 'Courier New', sans-serif;">
+                    <option value="v10.5">v10.5 - 动态云编译版 (Cloud Polymorphic) [极度安全]</option>
+                    <option value="v9.2">v9.2 - 私有独立签发版 (Private Signed) [安全]</option>
+                    <option value="v8.8">v8.8 - 长期稳定通道版 (LTS Channel) [推荐]</option>
+                    <option value="v7.4">v7.4 - 测试分支版 (Beta Branch) [存在风险]</option>
+                    <option value="v6.1">v6.1 - 旧版硬件断点版 (HWBP Legacy) [特征警告]</option>
+                    <option value="v5.0">v5.0 - 纯内存读写版 (RPM/WPM) [高危易封]</option>
+                    <option value="v3.1">v3.1 - 远古无保护版 (Naked Module) [必定拉闸]</option>
+                    <option value="v1.0">v1.0 - 开发者测试版 (Dev Only) [拒绝服务]</option>
+                </select>
             </div>
-            <div class="user-profile" onclick="app.openSettings()">
-                <img id="nav-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>" class="avatar">
-                <span id="nav-username">User</span>
-            </div>
+            <button onclick="switchScreen('feature-screen')" style="font-weight:bold;">进入模块装配 (NEXT)</button>
         </div>
-
-        <div class="tools-container" id="tools-container"></div>
     </div>
 
-    <div id="settings-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-close" onclick="app.closeModal('settings-modal')"></div>
-                <div class="modal-header-title">系统设置</div>
-                <div class="modal-placeholder"></div>
-            </div>
-            <div class="modal-body">
-                <div class="settings-layout">
-                    <div class="settings-sidebar">
-                        <div class="settings-tab active" onclick="app.switchTab('account')">账号</div>
-                        <div class="settings-tab" onclick="app.switchTab('appearance')">外观</div>
-                        <div class="settings-tab" onclick="app.switchTab('tools')">工具</div>
-                        <div class="settings-tab" onclick="app.switchTab('about')">关于</div>
+    <div id="feature-screen" class="screen">
+        <div class="panel" style="padding:0; overflow:hidden;">
+            <div class="macos-window">
+                <button class="triangle-btn" onclick="toggleAllTrees()" title="展开/折叠全部">▶</button>
+                <div class="macos-header">
+                    <strong>模块参数设置中心 (Module Setup)</strong>
+                    <button class="top-btn right" style="top: 8px;" onclick="switchScreen('driver-screen')">BACK</button>
+                </div>
+                <div class="macos-body" id="dynamic-features">
                     </div>
-                    <div class="settings-content">
-                        <div id="tab-account" class="settings-pane active">
-                            <div class="account-header">
-                                <img id="setting-avatar" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>">
-                                <div class="account-info">
-                                    <h2 id="setting-display-name">User</h2>
-                                    <p id="setting-display-role">角色: 游客</p>
-                                    <p id="setting-display-email" style="margin-top:2px;">未绑定邮箱</p>
-                                </div>
-                            </div>
-                            
-                            <div style="margin-bottom: 15px;">
-                                <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display:block;">更改昵称</label>
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="text" id="setting-nickname" class="auth-input" style="padding: 8px 12px;">
-                                    <button class="btn btn-secondary" style="width: auto; margin: 0; padding: 0 15px; font-size:13px;" onclick="app.saveNickname()">保存</button>
-                                </div>
-                            </div>
+            </div>
+            <div style="padding: 15px; background: #001100; border-top: var(--border);">
+                <button onclick="showWarningModal()" style="width: 100%; margin:0; font-weight:bold; font-size:16px;">[ 编译并执行刷入 (COMPILE & INJECT) ]</button>
+            </div>
+        </div>
+    </div>
 
-                            <div style="margin-bottom: 30px;">
-                                <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; display:block;">绑定/修改邮箱</label>
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="email" id="setting-bind-email" class="auth-input" style="padding: 8px 12px;">
-                                    <button class="btn btn-secondary" style="width: auto; margin: 0; padding: 0 15px; font-size:13px;" onclick="app.saveEmail()">绑定</button>
-                                </div>
-                            </div>
-                            
-                            <button class="btn" style="background: rgba(255,59,48,0.2); color: var(--danger-color); border: 1px solid var(--danger-color);" onclick="app.confirmLogout()">退出登录</button>
-                        </div>
-                        
-                        <div id="tab-appearance" class="settings-pane">
-                            <div class="setting-item">
-                                <div>
-                                    <div style="font-size: 14px;">浅色模式</div>
-                                    <div style="font-size: 11px; color: var(--text-secondary); margin-top:3px;">切换为亮色调UI界面</div>
-                                </div>
-                                <div id="theme-toggle" class="toggle-switch" onclick="app.toggleTheme()"></div>
-                            </div>
-                            <div class="setting-item">
-                                <div>
-                                    <div style="font-size: 14px;">减弱动画效果</div>
-                                    <div style="font-size: 11px; color: var(--text-secondary); margin-top:3px;">关闭系统所有过渡和缩放动画</div>
-                                </div>
-                                <div id="motion-toggle" class="toggle-switch" onclick="app.toggleMotion()"></div>
-                            </div>
-                        </div>
+    <div id="pre-inject-warning" class="modal-overlay">
+        <div class="warning-box">
+            <h3>[ STRICT WARNING ]</h3>
+            <p style="font-size:14px; line-height:1.6; text-align:left;">
+                即将向目标进程 <strong id="warn-process" style="color:#fff;"></strong> 注入未经签名的外置代码。<br><br>
+                此操作将拦截反作弊系统 (Anti-Cheat) 的心跳包并修改底层内存指针。如果您的环境隔离未完全生效，或者当前反作弊引擎已热更新，您将面临<span style="text-decoration:underline;">永久封禁硬件机器码</span>的风险。<br><br>
+                您是否确认当前系统环境绝对安全并继续执行？
+            </p>
+            <div>
+                <button onclick="document.getElementById('pre-inject-warning').style.display='none'" style="background:#555;">取消 (CANCEL)</button>
+                <button onclick="startInjection()">强制确认 (FORCE INJECT)</button>
+            </div>
+        </div>
+    </div>
 
-                        <div id="tab-tools" class="settings-pane">
-                            <div class="setting-item">
-                                <span>强制刷新界面UI</span>
-                                <button class="btn btn-secondary" style="width: auto; padding: 4px 12px; font-size: 12px; margin:0;" onclick="app.refreshUI()">刷新</button>
-                            </div>
-                            <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
-                                <div style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
-                                    <span>检查互联网连接</span>
-                                    <button class="btn btn-secondary" style="width: auto; padding: 4px 12px; font-size: 12px; margin:0;" onclick="app.runPing()">检测</button>
-                                </div>
-                                <div id="ping-terminal" class="hacker-terminal" style="width: 100%;"></div>
-                            </div>
-                            <div class="setting-item">
-                                <span>清理缓存</span>
-                                <button class="btn btn-secondary" style="width: auto; padding: 4px 12px; font-size: 12px; color: var(--danger-color); border-color: var(--danger-color); margin:0;" onclick="app.clearCache()">清理</button>
-                            </div>
-                        </div>
+    <div id="injection-screen" class="screen">
+        <div class="injection-container">
+            <div class="terminal" id="terminal-output"></div>
+            
+            <div class="bottom-progress">
+                <span style="font-weight:bold;">SYS_STATUS: </span>
+                <div class="progress-bar-bg">
+                    <div class="progress-fill" id="total-progress-fill"></div>
+                </div>
+                <span class="progress-text" id="total-progress-text">0.00%</span>
+            </div>
 
-                        <div id="tab-about" class="settings-pane">
-                            <div class="about-center">
-                                <h2>星烬工具站</h2>
-                                <p>Version 1.0.0 (Build 26A53)</p>
-                                
-                                <div class="about-info-line">
-                                    <span>开发者：𝑬𝒕𝒉𝒆𝒓𝒆𝒂𝒍.</span>
-                                    <button class="feedback-btn" onclick="app.showFeedback()">反馈</button>
-                                </div>
-                                <div class="about-info-line">
-                                    <span>开发工具：macOS</span>
-                                </div>
-                            </div>
-
-                            <div class="legal-section">
-                                <h3>法律与监管</h3>
-                                <div class="legal-links">
-                                    <span onclick="app.openModal('tos-modal')">隐私政策和用户协议</span>
-                                    <span onclick="app.openModal('license-modal')">开源许可 (Open Source)</span>
-                                </div>
-                                <a href="https://policies.google.com/privacy" target="_blank" class="google-link">此网站基于Google框架开发</a>
-                            </div>
+            <div class="floating-widget widget-top-left" id="radar-widget">
+                <div style="background:rgba(0,255,0,0.2); padding:5px 10px; font-size:12px; font-weight:bold; border-bottom:var(--border);">[ RADAR SYNC ]</div>
+                <div class="radar-box">
+                    <div class="radar-container">
+                        <div class="radar-grid"></div>
+                        <div class="radar-grid-h"></div>
+                        <div class="radar-circle"></div>
+                        <div class="radar-scan"></div>
                         </div>
-                    </div>
+                </div>
+            </div>
+
+            <div class="floating-widget widget-top-right" id="control-widget">
+                <div style="background:rgba(0,255,0,0.2); padding:5px 10px; font-size:12px; font-weight:bold; border-bottom:var(--border);">[ CONTROL PANEL ]</div>
+                <div class="control-list">
+                    <div id="control-items-container">
+                        </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div id="site-modal" class="modal-overlay">
-        <div class="modal-content" style="width: 320px; padding: 25px;">
-            <img id="site-icon" class="site-detail-icon" src="">
-            <div id="site-title" class="site-detail-title">Website</div>
-            <div id="site-desc" class="site-detail-desc">这是一个精选的互联网工具网站，提供优质的服务体验。</div>
-            <div id="site-warning" class="site-warning hidden">
-                <strong style="display:block; margin-bottom:5px;">⚠️ 访问受限预警</strong>
-                此网站在中国大陆可能无法直接访问，需要使用代理工具(VPN)。
-            </div>
-            <div class="site-action-btns">
-                <button class="btn btn-secondary" onclick="app.closeModal('site-modal')" style="margin:0;">取消</button>
-                <button class="btn btn-primary" onclick="app.confirmVisitSite()" style="margin:0;">访问网页</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="tos-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-close" onclick="app.closeModal('tos-modal')"></div>
-                <div class="modal-header-title">用户服务协议和隐私政策</div>
-                <div class="modal-placeholder"></div>
-            </div>
-            <div class="modal-body text-format" style="height: 60vh;">
-《用户服务协议和隐私政策》（以下简称“协议”）及其条款，系您下载、安装及使用“星烬工具站”软件（以下简称“本软件”）所订立的、描述您与本软件之间权利义务的协议。
-在注册前务必认真阅读本协议的内容、充分理解各条款内容，如有异议，您可选择不进入本软件。一旦您确认本用户注册协议后，本协议即在您和本软件之间产生法律效力，意味着您完全同意并接受协议的全部条款。请您审慎阅读并选择接受或不接受协议（未成年人应在法定监护人陪同下阅读）。
-
-用户使用：
-用户按照页面给与的提示完成全部注册步骤后，即成为本软件的用户，用户应自行保管账号及密码，并准确、安全地使用其账号及密码。本软件可通过用户自行设定，向用户提供个性化信息服务。
-用户充分了解并同意，本软件为用户提供个性化信息服务，用户须为自己注册账号下的行为负责，包括用户所导入、上载、传送的任何内容以及由此产生的任何后果，用户应对本软件中的内容自行加以判断，并承担因使用内容而引起的所有风险。本软件不对因用户行为而导致的损失承担责任。
-用户须对在本软件上所传送信息的真实性、合法性、有效性等负责，与用户所传播的信息相关的任何法律责任由用户自行承担，与本软件无关。用户在本软件中记录的或通过本软件服务所传送的任何内容并不反映本软件的观点或政策，本软件对此不承担责任。
-... (为排版精简省略部分重复段落，详细内容同上) ...
-本协议任一条款被视为废止、无效或不可执行，该条应视为可分的且并不影响本协议其余条款的有效性及可执行性。
-            </div>
-        </div>
-    </div>
-
-    <div id="license-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-close" onclick="app.closeModal('license-modal')"></div>
-                <div class="modal-header-title">Open Source Licenses</div>
-                <div class="modal-placeholder"></div>
-            </div>
-            <div class="modal-body text-format" style="height: 50vh; font-family: monospace; font-size: 11px;">
-The following sets forth attribution notices for third party software that may be contained in portions of the Stardust Tool Station.
-
------
-Google Framework & API components
-Copyright 2026 Google LLC. All rights reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
------
-GitHub Open Source Integrations
-Copyright (c) 2026 GitHub, Inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-            </div>
-        </div>
-    </div>
-
-    <div id="alert-modal" class="modal-overlay">
-        <div class="modal-content" style="width: 300px; text-align: center; padding: 25px;">
-            <h3 id="alert-title" style="margin-bottom: 15px; font-size: 16px;">提示</h3>
-            <p id="alert-msg" style="color: var(--text-secondary); font-size: 13px; margin-bottom: 25px; line-height: 1.5;"></p>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button id="alert-cancel" class="btn btn-secondary hidden" onclick="app.closeModal('alert-modal')" style="margin:0; width: 100px; font-size: 13px;">取消</button>
-                <button id="alert-confirm" class="btn btn-primary" style="margin:0; width: 100px; font-size: 13px;">确定</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toast"></div>
 
     <script>
-        const app = {
-            currentUser: null,
-            usersDB: [], 
-            isLightMode: false,
-            isReduceMotion: false,
-            defaultAvatar: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ccc'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>",
-            pendingSite: null,
+        const VALID_KEY = "TRX99";
+        let targetGame = {};
 
-            // 需要VPN的网站名单
-            vpnDomains: ['chatgpt.com', 'claude.ai', 'gemini.google.com', 'midjourney.com', 'poe.com', 'perplexity.ai', 'youtube.com', 'x.com', 'netflix.com', 'reddit.com', 'twitch.tv', 'wikipedia.org', 'google.com'],
-
-            toolsData: [
-                { cat: 'AI人工智能', items: [
-                    { name: 'ChatGPT', url: 'chatgpt.com' }, { name: 'Claude', url: 'claude.ai' },
-                    { name: 'Gemini', url: 'gemini.google.com' }, { name: 'Midjourney', url: 'midjourney.com' },
-                    { name: 'Kimi', url: 'kimi.moonshot.cn' }, { name: '文心一言', url: 'yiyan.baidu.com' },
-                    { name: '通义千问', url: 'tongyi.aliyun.com' }, { name: 'Perplexity', url: 'perplexity.ai' },
-                    { name: 'HuggingFace', url: 'huggingface.co' }, { name: 'Poe', url: 'poe.com' }
-                ]},
-                { cat: '开发者工具', items: [
-                    { name: 'GitHub', url: 'github.com' }, { name: 'GitLab', url: 'gitlab.com' },
-                    { name: 'StackOverflow', url: 'stackoverflow.com' }, { name: 'Vercel', url: 'vercel.com' },
-                    { name: 'CodePen', url: 'codepen.io' }, { name: 'LeetCode', url: 'leetcode.com' },
-                    { name: 'Gitee', url: 'gitee.com' }, { name: 'Docker', url: 'hub.docker.com' },
-                    { name: 'NPM', url: 'npmjs.com' }, { name: 'Postman', url: 'postman.com' }
-                ]},
-                { cat: '设计与素材', items: [
-                    { name: 'Figma', url: 'figma.com' }, { name: 'Canva', url: 'canva.com' },
-                    { name: 'Dribbble', url: 'dribbble.com' }, { name: 'Behance', url: 'behance.net' },
-                    { name: 'Pinterest', url: 'pinterest.com' }, { name: 'Coolors', url: 'coolors.co' },
-                    { name: 'Unsplash', url: 'unsplash.com' }, { name: 'Pixabay', url: 'pixabay.com' },
-                    { name: 'Pexels', url: 'pexels.com' }, { name: 'FontAwesome', url: 'fontawesome.com' },
-                    { name: '站酷', url: 'zcool.com.cn' }, { name: 'Iconfont', url: 'iconfont.cn' }
-                ]},
-                { cat: '效率办公', items: [
-                    { name: 'Notion', url: 'notion.so' }, { name: 'Trello', url: 'trello.com' },
-                    { name: 'Asana', url: 'asana.com' }, { name: 'Todoist', url: 'todoist.com' },
-                    { name: 'Miro', url: 'miro.com' }, { name: 'Obsidian', url: 'obsidian.md' },
-                    { name: 'Slack', url: 'slack.com' }, { name: '钉钉', url: 'dingtalk.com' },
-                    { name: '飞书', url: 'feishu.cn' }, { name: '腾讯文档', url: 'docs.qq.com' }
-                ]},
-                { cat: '实用工具', items: [
-                    { name: 'Google翻译', url: 'translate.google.com' }, { name: 'DeepL', url: 'deepl.com' },
-                    { name: 'TinyPNG', url: 'tinypng.com' }, { name: 'ILovePDF', url: 'ilovepdf.com' },
-                    { name: 'Convertio', url: 'convertio.co' }, { name: 'Regex101', url: 'regex101.com' },
-                    { name: 'JSONLint', url: 'jsonlint.com' }, { name: 'VirusTotal', url: 'virustotal.com' },
-                    { name: 'Speedtest', url: 'speedtest.net' }, { name: 'Base64Decode', url: 'base64decode.org' }
-                ]},
-                { cat: '影音娱乐', items: [
-                    { name: 'YouTube', url: 'youtube.com' }, { name: 'Bilibili', url: 'bilibili.com' },
-                    { name: 'Spotify', url: 'spotify.com' }, { name: 'Netflix', url: 'netflix.com' },
-                    { name: 'Twitch', url: 'twitch.tv' }, { name: 'Vimeo', url: 'vimeo.com' },
-                    { name: 'SoundCloud', url: 'soundcloud.com' }, { name: 'Apple Music', url: 'music.apple.com' },
-                    { name: '豆瓣', url: 'douban.com' }, { name: '网易云音乐', url: 'music.163.com' }
-                ]},
-                { cat: '社区与学习', items: [
-                    { name: 'Wikipedia', url: 'wikipedia.org' }, { name: 'Reddit', url: 'reddit.com' },
-                    { name: 'Quora', url: 'quora.com' }, { name: '知乎', url: 'zhihu.com' },
-                    { name: 'Twitter / X', url: 'x.com' }, { name: 'Coursera', url: 'coursera.org' },
-                    { name: 'Udemy', url: 'udemy.com' }, { name: 'MDN Web Docs', url: 'developer.mozilla.org' },
-                    { name: '掘金', url: 'juejin.cn' }, { name: '少数派', url: 'sspai.com' }
-                ]}
-            ],
-
-            $: id => document.getElementById(id),
-
-            showToast(msg) {
-                const t = this.$('toast');
-                t.innerText = msg;
-                t.classList.add('show');
-                setTimeout(() => t.classList.remove('show'), 2500);
+        // 扩充的游戏功能数据库，确保每个功能不同
+        const GAME_FEATURES_DB = {
+            '和平精英': {
+                'Visuals (透视)': ['方框透视', '骨骼与射线', '载具与油量', '高级物资过滤', '血量护甲显化'],
+                'Aimbot (自瞄)': ['预测自瞄(Bullet Drop)', '倒地过滤', '掩体判断(VisCheck)', '微自瞄(RCS)'],
+                'Memory (内存)': ['全局无后座', '子弹追踪(Magic Bullet)', '上帝视角', '跳伞秒落地'],
+                'Misc (杂项)': ['2D动态雷达', '旁路过检(Bypass)', '过直播防截图', '清理本地Log']
             },
-
-            showAlert(title, msg, onConfirm = null, showCancel = false) {
-                this.$('alert-title').innerText = title;
-                this.$('alert-msg').innerText = msg;
-                const confirmBtn = this.$('alert-confirm');
-                const cancelBtn = this.$('alert-cancel');
-                
-                cancelBtn.classList.toggle('hidden', !showCancel);
-                
-                const newConfirmBtn = confirmBtn.cloneNode(true);
-                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-                
-                newConfirmBtn.onclick = () => {
-                    this.closeModal('alert-modal');
-                    if(onConfirm) onConfirm();
-                };
-                this.openModal('alert-modal');
+            '无畏契约': {
+                'Visuals (透视)': ['Glow外发光透视', '精细骨骼ESP', '血条/护甲', '技能冷却监控', '小地图共享'],
+                'Aimbot (自瞄)': ['磁性自瞄(Smooth Aim)', '扳机自瞄(TriggerBot)', '独立后坐力压枪', '自动急停(Auto Stop)'],
+                'Memory (内存)': ['免疫闪光/烟雾', '第三人称视角', '强制断网(Lag Switch)'],
+                'Misc (杂项)': ['过 Vanguard', '截图黑屏保护(StreamProof)', '解锁机器码限制(Spoofer)']
             },
-
-            openModal: id => document.getElementById(id).classList.add('active'),
-            closeModal: id => document.getElementById(id).classList.remove('active'),
-
-            // --- 认证相关 ---
-            switchAuth(mode) {
-                const loginForm = this.$('login-form');
-                const regForm = this.$('register-form');
-                if(mode === 'register') {
-                    loginForm.classList.replace('active-flip', 'hidden-flip');
-                    regForm.classList.replace('hidden-flip', 'active-flip');
-                } else {
-                    regForm.classList.replace('active-flip', 'hidden-flip');
-                    loginForm.classList.replace('hidden-flip', 'active-flip');
-                }
+            'CS2': {
+                'Visuals (透视)': ['2D/3D方框', '骨骼ESP', 'C4炸弹倒计时', '手雷物理轨迹预测', '丢弃武器高亮', '视角射线'],
+                'Aimbot (自瞄)': ['静默自瞄(Silent Aim)', 'Hitbox优先级选择', '独立RCS压枪参数', 'FOV动态调整'],
+                'Movement (身法)': ['连跳(Bhop)', '自动急停(Auto Strafe)', '边缘跳(Edge Jump)'],
+                'Misc (杂项)': ['防闪光(NoFlash)', 'OBS防录制', '自动接受匹配', '改名假身']
             },
-
-            togglePwd(inputId, btn) {
-                const input = this.$(inputId);
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    btn.style.color = 'var(--accent-color)';
-                } else {
-                    input.type = 'password';
-                    btn.style.color = 'var(--text-secondary)';
-                }
+            '逃离塔科夫': {
+                'Visuals (透视)': ['玩家/AI骨骼ESP', '撤离点显示', '高价值物资(红卡/显卡)透视', '容器内部透视', '地雷区警告'],
+                'Aimbot (自瞄)': ['高精度预判自瞄', '无视弹道下坠', '锁定特定部位', '盲射修正'],
+                'Memory (内存)': ['无限体力', '移除负重惩罚', '瞬间开门/搜索', '无后座/无扩散'],
+                'Misc (杂项)': ['战利品吸附(危险)', '夜视/热成像模式强制开启', '跳过加载动画']
             },
-
-            checkRegUser() {
-                const user = this.$('reg-user').value;
-                const hint = this.$('reg-user-hint');
-                const regex = /^[a-zA-Z0-9\-\_\.]{2,}$/;
-                if (user.length > 0 && !regex.test(user)) {
-                    hint.classList.add('error-text');
-                } else {
-                    hint.classList.remove('error-text');
-                }
+            'GTA V': {
+                'Player (玩家)': ['无敌模式(God Mode)', '隐身', '超级跳跃', '无限子弹/无需换弹', '通缉星级清零'],
+                'Vehicle (载具)': ['刷出指定载具', '载具无敌', '载具加速/飞天', '喇叭爆炸'],
+                'World (世界)': ['传送至导航点', '控制天气/时间', '冻结所有NPC', '清除附近实体'],
+                'Network (战局)': ['防踢出/崩溃保护', '踢出其他玩家', '发送全服消息']
             },
-
-            checkRegEmail() {
-                const email = this.$('reg-email').value;
-                const hint = this.$('reg-email-hint');
-                const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (email.length > 0 && !regex.test(email)) {
-                    hint.innerText = "邮箱格式不正确";
-                    hint.classList.add('error-text');
-                    return false;
-                } else {
-                    hint.innerText = "";
-                    hint.classList.remove('error-text');
-                    return true;
-                }
+            '赛博朋克2077': {
+                'Hacks (修改)': ['锁定生命/耐力', '锁定内存容量(RAM)', '一击必杀', '隐身模式', '无限二段跳'],
+                'Items (物品)': ['修改金钱(Eddies)', '无限消耗品/手雷', '解锁所有图纸', '强制获取不朽武器'],
+                'Misc (杂项)': ['游戏速度调节', '无视负重', '快速骇入无冷却']
             },
-
-            register() {
-                const user = this.$('reg-user').value.trim();
-                const email = this.$('reg-email').value.trim();
-                const pass = this.$('reg-pass').value;
-                const passConfirm = this.$('reg-pass-confirm').value;
-                const userRegex = /^[a-zA-Z0-9\-\_\.]{2,}$/;
-
-                if(!user || !email || !pass) return this.showAlert('注册失败', '请填写完整所有信息。');
-                if(!userRegex.test(user)) return this.showAlert('注册失败', '昵称格式不正确：至少两个字符不得包含除-_.以外的其他字符。');
-                if(!this.checkRegEmail()) return this.showAlert('注册失败', '请填写正确的邮箱格式。');
-                if(pass !== passConfirm) return this.showAlert('注册失败', '两次输入的密码不相同。');
-                if(this.usersDB.find(u => u.user === user || u.email === email)) return this.showAlert('注册失败', '该账号或邮箱已被注册！');
-
-                this.usersDB.push({ user, email, pass });
-                this.showToast('注册成功，请登录');
-                this.switchAuth('login');
-            },
-
-            login() {
-                const acc = this.$('login-account').value.trim();
-                const pass = this.$('login-password').value;
-
-                if(acc === '3842331792' && pass === 'Wcn062003') {
-                    this.enterApp({ user: 'Administrator', email: '3842331792@qq.com', role: 'admin' });
-                    return;
-                }
-
-                const userObj = this.usersDB.find(u => (u.user === acc || u.email === acc) && u.pass === pass);
-                if(userObj) {
-                    userObj.role = 'user';
-                    this.enterApp(userObj);
-                } else {
-                    this.showAlert('登录失败', '未查找到用户或密码错误。');
-                }
-            },
-
-            guestLogin() {
-                this.enterApp({ user: 'User', email: '', role: 'guest' });
-            },
-
-            confirmLogout() {
-                this.showAlert('退出登录', '退出后需要重新输入账号密码，确定退出吗？', () => {
-                    this.closeModal('settings-modal');
-                    this.currentUser = null;
-                    this.$('login-password').value = '';
-                    this.$('main-view').classList.add('hidden');
-                    this.$('login-view').classList.remove('hidden');
-                    this.showToast('已安全退出');
-                }, true);
-            },
-
-            enterApp(user) {
-                this.currentUser = user;
-                this.$('login-view').classList.add('hidden');
-                this.$('main-view').classList.remove('hidden');
-                
-                this.updateAccountUI();
-                this.renderTools();
-            },
-
-            updateAccountUI() {
-                const u = this.currentUser;
-                this.$('nav-username').innerText = u.user;
-                this.$('setting-display-name').innerText = u.user;
-                this.$('setting-display-role').innerText = `角色: ${u.role === 'admin' ? '管理员' : u.role === 'user' ? '注册用户' : '游客'}`;
-                this.$('setting-display-email').innerText = u.email ? `邮箱: ${u.email}` : '未绑定邮箱';
-                
-                this.$('setting-nickname').value = u.user;
-                this.$('setting-bind-email').value = u.email || '';
-            },
-
-            // --- 渲染逻辑 ---
-            renderTools(query = '') {
-                const container = this.$('tools-container');
-                container.innerHTML = '';
-                const isGuest = this.currentUser.role === 'guest';
-                let renderedCount = 0;
-                const GUEST_LIMIT = 20;
-
-                this.toolsData.forEach(category => {
-                    if (isGuest && renderedCount >= GUEST_LIMIT) return;
-
-                    const filteredItems = category.items.filter(t => t.name.toLowerCase().includes(query.toLowerCase()));
-                    if(filteredItems.length === 0) return;
-
-                    const catTitle = document.createElement('div');
-                    catTitle.className = 'category-title';
-                    catTitle.innerText = category.cat;
-                    container.appendChild(catTitle);
-
-                    const grid = document.createElement('div');
-                    grid.className = 'tools-grid';
-
-                    for (let item of filteredItems) {
-                        if (isGuest && renderedCount >= GUEST_LIMIT) break;
-                        
-                        const a = document.createElement('a');
-                        a.className = 'tool-card glass-panel';
-                        // 取消默认跳转，绑定自定义弹窗
-                        a.onclick = (e) => { e.preventDefault(); this.triggerSiteModal(item); };
-                        
-                        const iconUrl = `https://www.google.com/s2/favicons?domain=${item.url}&sz=64`;
-                        a.innerHTML = `
-                            <img class="tool-icon" src="${iconUrl}" onerror="this.src='${this.defaultAvatar}'">
-                            <div class="tool-name">${item.name}</div>
-                        `;
-                        grid.appendChild(a);
-                        renderedCount++;
-                    }
-                    container.appendChild(grid);
-                });
-
-                if (isGuest) {
-                    const prompt = document.createElement('div');
-                    prompt.style.textAlign = 'center'; prompt.style.padding = '30px';
-                    prompt.innerHTML = `游客模式仅展示部分内容。<br><br><button class="btn btn-primary" style="width:auto; padding:8px 20px;" onclick="app.confirmLogout()">立即登录解锁全部 ${this.toolsData.reduce((acc, c)=>acc+c.items.length,0)} 个工具</button>`;
-                    container.appendChild(prompt);
-                }
-            },
-
-            filterTools() { this.renderTools(this.$('search-input').value); },
-
-            // --- 网站跳转二次确认与 VPN 逻辑 ---
-            triggerSiteModal(site) {
-                this.pendingSite = site;
-                this.$('site-title').innerText = site.name;
-                this.$('site-desc').innerText = `您即将离开本站并访问 ${site.url}，请确认此操作。`;
-                this.$('site-icon').src = `https://www.google.com/s2/favicons?domain=${site.url}&sz=128`;
-                
-                const needsVPN = this.vpnDomains.some(domain => site.url.includes(domain));
-                const warningDiv = this.$('site-warning');
-                
-                if(needsVPN) {
-                    warningDiv.classList.remove('hidden');
-                    this.pendingSite.needsVPN = true;
-                } else {
-                    warningDiv.classList.add('hidden');
-                    this.pendingSite.needsVPN = false;
-                }
-                
-                this.openModal('site-modal');
-            },
-
-            confirmVisitSite() {
-                this.closeModal('site-modal');
-                if(this.pendingSite.needsVPN) {
-                    // 二次红色警告
-                    this.showAlert('🔴 代理连接预警', '该网站受到当地网络监管限制。\n\n请再次确认您已开启合法授权的代理服务(VPN)，否则加载将超时或失败。', () => {
-                        window.open(`https://${this.pendingSite.url}`, '_blank');
-                    }, true);
-                } else {
-                    window.open(`https://${this.pendingSite.url}`, '_blank');
-                }
-            },
-
-            // --- 设置与功能 ---
-            openSettings() { this.openModal('settings-modal'); },
-            
-            switchTab(tab) {
-                document.querySelectorAll('.settings-tab').forEach(e => e.classList.remove('active'));
-                document.querySelectorAll('.settings-pane').forEach(e => e.classList.remove('active'));
-                event.target.classList.add('active');
-                this.$('tab-' + tab).classList.add('active');
-            },
-
-            saveNickname() {
-                const newName = this.$('setting-nickname').value.trim();
-                const regex = /^[a-zA-Z0-9\-\_\.]{2,}$/;
-                if(!newName || !regex.test(newName)) return this.showToast('昵称格式错误');
-                this.currentUser.user = newName;
-                this.updateAccountUI();
-                this.showToast('昵称已更新');
-            },
-
-            saveEmail() {
-                const newEmail = this.$('setting-bind-email').value.trim();
-                const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if(newEmail && !regex.test(newEmail)) return this.showToast('邮箱格式错误');
-                this.currentUser.email = newEmail;
-                this.updateAccountUI();
-                this.showToast('邮箱绑定成功');
-            },
-
-            toggleTheme() {
-                this.isLightMode = !this.isLightMode;
-                document.body.classList.toggle('light-mode', this.isLightMode);
-                this.$('theme-toggle').classList.toggle('active', this.isLightMode);
-            },
-
-            toggleMotion() {
-                this.isReduceMotion = !this.isReduceMotion;
-                document.body.classList.toggle('reduce-motion', this.isReduceMotion);
-                this.$('motion-toggle').classList.toggle('active', this.isReduceMotion);
-            },
-
-            refreshUI() {
-                this.renderTools();
-                this.showToast('界面已强制重新渲染');
-            },
-
-            clearCache() {
-                this.showAlert('清理提醒', '这将清除您的本地缓存配置数据，但不影响当前登录状态，确定清理吗？', () => {
-                    this.showToast('缓存已清理完毕');
-                }, true);
-            },
-
-            runPing() {
-                const term = this.$('ping-terminal');
-                term.style.display = 'block';
-                term.innerHTML = '<span style="color:#0f0;">user@sys ~ %</span> ping connection...<br>';
-                
-                let count = 0;
-                const iv = setInterval(() => {
-                    count++;
-                    const ms = Math.floor(Math.random() * 60) + 12; 
-                    term.innerHTML += `Reply from remote server: time=<span style="color:${ms > 50 ? '#ffcc00' : '#0f0'}">${ms}ms</span><br>`;
-                    term.scrollTop = term.scrollHeight;
-                    if(count > 4) {
-                        clearInterval(iv);
-                        term.innerHTML += '<br><span style="color:#0f0;">user@sys ~ %</span> Ping statistics: 0% packet loss.<br>';
-                        term.scrollTop = term.scrollHeight;
-                    }
-                }, 600);
-            },
-
-            showFeedback() {
-                this.showAlert('意见反馈', '请将您的反馈或建议发送至开发者邮箱：\n\n3842331792@qq.com');
+            '默认配置': {
+                'Visuals (视觉)': ['基础方框', '骨骼渲染', '距离显示'],
+                'Aimbot (自瞄)': ['平滑追踪', '按键触发'],
+                'Memory (内存)': ['后坐力修改'],
+                'Misc (杂项)': ['防截图保护']
             }
         };
-    </script>
-</body>
-</html>
+
+        // 启动超长滚动动画
+        window.onload = async () => {
+            const term = document.getElementById('boot-terminal');
+            const bootLogs = [
+                "PHANTOM OS v11.4.9 BOOT SEQUENCE INITIATED...",
+                "LOADING KERNEL MODULES... OK",
+                "MOUNTING VIRTUAL FILESYSTEM (VFS)... OK",
+                "INITIALIZING CRYPTO SUBSYSTEM... SHA-512 ENABLED",
+                "ESTABLISHING SECURE PROTOCOLS... DONE",
+                "CHECKING HARDWARE ID... [MATCHED]",
+                "VERIFYING NETWORK TUNNEL... [IP MASKED]",
+                "ALLOCATING MEMORY POOL FOR UI... DONE",
+                "LAUNCHING GRAPHICAL ENVIRONMENT..."
+            ];
+            for (let log of bootLogs) {
+                term.innerHTML += log + "<br>";
+                await new Promise(r => setTimeout(r, 100 + Math.random() * 150));
+            }
+            setTimeout(() => switchScreen('login-screen'), 300);
+        };
+
+        function switchScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            setTimeout(() => { document.getElementById(id).classList.add('active'); }, 50); 
+        }
+
+        function logout() {
+            document.getElementById('auth-key').value = '';
+            switchScreen('login-screen');
+        }
+
+        function verifyKey() {
+            const keyInput = document.getElementById('auth-key').value.trim().toUpperCase();
+            runAuthCheck(keyInput === VALID_KEY || keyInput === ''); // 测试方便允许空
+        }
+
+        // 英文自检动画变长
+        async function runAuthCheck(isValid) {
+            switchScreen('self-check-screen');
+            const term = document.getElementById('check-terminal');
+            term.innerHTML = "";
+            const logs = [
+                "> INITIALIZING CONNECTION TO DEEP-WEB AUTH SERVER...",
+                "> ROUTING THROUGH PROXY CHAIN [DE -> RU -> HK]...",
+                "> TRANSMITTING ENCRYPTED KEY (RSA-2048)...",
+                "> AWAITING RESPONSE FROM MAIN DATABASE...",
+                "> VERIFYING HARDWARE SIGNATURE (MAC/HWID/SMBIOS)...",
+                "> CHECKING SUBSCRIPTION STATUS...",
+                "> FETCHING LATEST OFFSET OFFSETS...",
+                "> COMPILING DYNAMIC SIGNATURES..."
+            ];
+
+            for (let log of logs) {
+                term.innerHTML += log + "<br>";
+                await new Promise(r => setTimeout(r, 150 + Math.random() * 200));
+            }
+
+            if (isValid) {
+                term.innerHTML += "<br><span style='color: #0f0; font-weight:bold;'>> [SUCCESS] LICENSE VALID. ALL CHECKS PASSED. ACCESS GRANTED.</span><br>";
+                await new Promise(r => setTimeout(r, 800));
+                switchScreen('game-screen');
+            } else {
+                term.innerHTML += "<br><span style='color: #ff0000; font-weight: bold;'>> [ERROR] INVALID LICENSE KEY OR HARDWARE MISMATCH.</span><br>";
+                term.innerHTML += "> INITIATING SELF-DESTRUCT SEQUENCE OF LOGS... ABORTING...";
+                await new Promise(r => setTimeout(r, 1500));
+                switchScreen('login-screen');
+            }
+        }
+
+        function selectGame(name, process, ac) {
+            targetGame = { name: name, process: process, ac: ac };
+            document.getElementById('selected-game-name').innerText = `${name} (${process})`;
+            document.getElementById('warn-process').innerText = process;
+            generateFeatureUI(name);
+            switchScreen('driver-screen');
+        }
+
+        // 动态生成游戏功能菜单
+        function generateFeatureUI(gameName) {
+            const db = GAME_FEATURES_DB[gameName] || GAME_FEATURES_DB['默认配置'];
+            let html = '';
+            for(let category in db) {
+                html += `
+                <div class="tree-group">
+                    <div class="tree-header" onclick="toggleTree(this)">▼ ${category}</div>
+                    <div class="tree-content">
+                        ${db[category].map((f, i) => `<label class="feature-item"><input type="checkbox" value="${f}" checked> ${f}</label>`).join('')}
+                    </div>
+                </div>`;
+            }
+            document.getElementById('dynamic-features').innerHTML = html;
+        }
+
+        function toggleTree(element) {
+            const content = element.nextElementSibling;
+            if (content.style.display === "none") {
+                content.style.display = "grid";
+                element.innerText = element.innerText.replace("▶", "▼");
+            } else {
+                content.style.display = "none";
+                element.innerText = element.innerText.replace("▼", "▶");
+            }
+        }
+
+        // 点击小三角展开/折叠全部
+        let isAllExpanded = true;
+        function toggleAllTrees() {
+            isAllExpanded = !isAllExpanded;
+            const headers = document.querySelectorAll('#dynamic-features .tree-header');
+            const tri = document.querySelector('.triangle-btn');
+            tri.style.transform = isAllExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+            
+            headers.forEach(h => {
+                const content = h.nextElementSibling;
+                if (isAllExpanded) {
+                    content.style.display = "grid";
+                    h.innerText = h.innerText.replace("▶", "▼");
+                } else {
+                    content.style.display = "none";
+                    h.innerText = h.innerText.replace("▼", "▶");
+                }
+            });
+        }
+
+        function showWarningModal() {
+            document.getElementById('pre-inject-warning').style.display = 'flex';
+        }
+
+        // 刷入界面：底层滚动，更长时间
+        function startInjection() {
+            document.getElementById('pre-inject-warning').style.display = 'none';
+            switchScreen('injection-screen');
+            runTerminalSimulation();
+        }
+
+        async function runTerminalSimulation() {
+            const terminal = document.getElementById('terminal-output');
+            const progFill = document.getElementById('total-progress-fill');
+            const progText = document.getElementById('total-progress-text');
+            terminal.innerHTML = "";
+            document.getElementById('radar-widget').classList.remove('active');
+            document.getElementById('control-widget').classList.remove('active');
+            progFill.style.width = "0%";
+            progText.innerText = "0.00%";
+            
+            const logs = [
+                `[SYS] PREPARING ISOLATED ENVIRONMENT FOR [${targetGame.name}]...`,
+                `[COMPILER] BUILDING POLYMORPHIC PAYLOAD SPECIFIC FOR ${targetGame.process}...`,
+                `[ANTI-CHEAT] DETECTED ENGINE: ${targetGame.ac}. LOADING COUNTER-MEASURES...`,
+                `[KERNEL] HOOKING NTOpenProcess / NTQuerySystemInformation...`,
+                `[MEM] SCANNING MODULE BASE ADDRESS OF ${targetGame.process}...`,
+                `[MEM] LOCATING PEB (PROCESS ENVIRONMENT BLOCK)...`,
+                `[INJECTOR] ALLOCATING RWX MEMORY IN TARGET POOL...`,
+                `[INJECTOR] WRITING DLL INTO KERNEL MEMORY SPACE...`,
+                `[INJECTOR] RESOLVING DYNAMIC OFFSETS FOR [${targetGame.name.toUpperCase()}]...`
+            ];
+
+            let totalSteps = logs.length + 30; // 日志行数 + 模拟30次快速滚动
+            let currentStep = 0;
+
+            const updateProgress = () => {
+                currentStep++;
+                let pct = Math.min((currentStep / totalSteps) * 90, 90); // 前期跑到90%
+                progFill.style.width = pct + "%";
+                progText.innerText = pct.toFixed(2) + "%";
+            };
+
+            for (let log of logs) {
+                terminal.innerHTML += log + "<br>";
+                terminal.scrollTo(0, terminal.scrollHeight);
+                updateProgress();
+                await new Promise(r => setTimeout(r, 400 + Math.random() * 400));
+            }
+
+            // 生成一大串快速滚动的 Hex 数据
+            for(let i=0; i<30; i++) {
+                let hexStr = "[VFS_WRITE] 0x";
+                for(let j=0; j<8; j++) {
+                    hexStr += Math.floor(Math.random()*4294967295).toString(16).toUpperCase().padStart(8, '0') + " ";
+                }
+                terminal.innerHTML += hexStr + "<br>";
+                terminal.scrollTo(0, terminal.scrollHeight);
+                updateProgress();
+                await new Promise(r => setTimeout(r, 60)); // 快速滚动
+            }
+
+            // 进度到100%
+            progFill.style.width = "100%";
+            progText.innerText = "100.00%";
+            
+            terminal.innerHTML += `<br>[SYS] CLEANING UP TRACES AND UNLOADING DRIVER MAPPER...<br>`;
+            terminal.innerHTML += `<span style="color:#0f0; font-weight:bold;">[SUCCESS] MEMORY INJECTION COMPLETED SUCCESSFULLY.</span><br><br>`;
+            terminal.innerHTML += `PROCEED TO ATTACH OVERLAY GUI WIDGETS? [<span class="yn-btn" onclick="postYInjection('Y')">Y</span> / <span class="yn-btn" onclick="postYInjection('N')">N</span>] <span class="blink">_</span>`;
+            terminal.scrollTo(0, terminal.scrollHeight);
+            
+            const keyHandler = function(e) {
+                if (e.key.toUpperCase() === 'Y' || e.key.toUpperCase() === 'N') {
+                    document.removeEventListener('keydown', keyHandler);
+                    postYInjection(e.key.toUpperCase());
+                }
+            };
+            document.addEventListener('keydown', keyHandler);
+        }
+
+        async function postYInjection(choice) {
+            if (choice === 'N') {
+                switchScreen('feature-screen');
+                return;
+            }
+
+            const terminal = document.getElementById('terminal-output');
+            terminal.innerHTML = terminal.innerHTML.replace(/PROCEED TO ATTACH.*?<span class="blink">_<\/span>/, "");
+            terminal.innerHTML += `<br>> COMMAND ACCEPTED: Y<br>`;
+            
+            const postLogs = [
+                `> CREATING TRANSPARENT OVERLAY (WS_EX_LAYERED | WS_EX_TRANSPARENT)...`,
+                `> BINDING DIRECTX11 RENDERING PIPELINE...`,
+                `> SYNCING ENTITY LIST FROM ${targetGame.process}...`,
+                `> WAKING UP RADAR & CONTROL THREADS...`
+            ];
+
+            for (let log of postLogs) {
+                terminal.innerHTML += log + "<br>";
+                terminal.scrollTo(0, terminal.scrollHeight);
+                await new Promise(r => setTimeout(r, 400 + Math.random() * 300));
+            }
+
+            // 构建并显示右上角控制窗和左上角雷达
+            buildControlPanel();
+            document.getElementById('radar-widget').classList.add('active');
+            document.getElementById('control-widget').classList.add('active');
+
+            // 保持终端在
